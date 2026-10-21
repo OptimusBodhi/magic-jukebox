@@ -15,6 +15,7 @@ import {
   Wand2,
   CheckCircle2,
   Home,
+  HelpCircle,
 } from 'lucide-react';
 import {
   ARTHUR_SEED_TRACKS,
@@ -42,6 +43,7 @@ import ClinicalTelemetryView from '@/components/ClinicalTelemetryView';
 import ClinicalEvidenceVaultView from '@/components/ClinicalEvidenceVaultView';
 import GuidedOnboardingView from '@/components/GuidedOnboardingView';
 import LandingHomeView from '@/components/LandingHomeView';
+import SimpleTutorialModal from '@/components/SimpleTutorialModal';
 
 type ActiveTab = 'home' | 'jukebox' | 'interview' | 'detective' | 'telemetry' | 'science';
 
@@ -49,6 +51,7 @@ const STORAGE_KEY = 'magic_jukebox_wildwoods_state_v1';
 
 export default function MagicJukeboxApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
   const [patient, setPatient] = useState<PatientProfile>(DEFAULT_PATIENT_PROFILE);
   const [isCustomProfile, setIsCustomProfile] = useState<boolean>(false);
   const [interviewStartBlank, setInterviewStartBlank] = useState<boolean>(false);
@@ -713,6 +716,15 @@ export default function MagicJukeboxApp() {
 
             <button
               type="button"
+              onClick={() => setIsTutorialOpen(true)}
+              className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold font-extrabold text-xs sm:text-sm flex items-center gap-1.5 border border-wildwoods-amber/60 transition"
+            >
+              <HelpCircle className="w-4 h-4 text-wildwoods-gold" />
+              How It Works
+            </button>
+
+            <button
+              type="button"
               onClick={handleResetDemoState}
               title="Reset Arthur Pendelton Demo Data"
               className="hidden lg:inline-flex min-h-[48px] px-3.5 py-2 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-mint text-xs font-semibold items-center gap-1.5 border border-wildwoods-moss transition"
@@ -723,6 +735,17 @@ export default function MagicJukeboxApp() {
           </nav>
         </div>
       </header>
+
+      {/* Beginner-Friendly Interactive 4-Step Visual Tutorial Modal */}
+      <SimpleTutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+        onStartBuildingPlaylist={() => {
+          setInterviewStartBlank(true);
+          setActiveTab('interview');
+        }}
+        onOpenJukebox={() => setActiveTab('jukebox')}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28">
@@ -756,6 +779,7 @@ export default function MagicJukeboxApp() {
               setActiveTab('interview');
             }}
             onExploreDemo={() => setActiveTab('jukebox')}
+            onOpenTutorial={() => setIsTutorialOpen(true)}
             onNavigateTab={(t) => {
               if (t === 'interview') setInterviewStartBlank(false);
               setActiveTab(t);
@@ -817,12 +841,14 @@ export default function MagicJukeboxApp() {
             onChangeRampMode={setRampMode}
             rasPulseEnabled={rasPulseEnabled}
             onToggleRasPulse={() => setRasPulseEnabled((prev) => !prev)}
+            onOpenTutorial={() => setIsTutorialOpen(true)}
           />
         )}
 
         {activeTab === 'interview' && (
           <GuidedOnboardingView
             startBlank={interviewStartBlank}
+            onOpenTutorial={() => setIsTutorialOpen(true)}
             onCompleteInterview={({
               profile: newProfile,
               tracks: synthesizedTracks,

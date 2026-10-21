@@ -38,6 +38,7 @@ import {
   Gauge,
   TrendingUp,
   TrendingDown,
+  HelpCircle,
 } from 'lucide-react';
 import {
   CURRENT_EMOTIONAL_STATES,
@@ -94,6 +95,7 @@ interface IsoJukeboxViewProps {
   onChangeRampMode?: (mode: 'off' | 'speed_up' | 'slow_down') => void;
   rasPulseEnabled?: boolean;
   onToggleRasPulse?: () => void;
+  onOpenTutorial?: () => void;
 }
 
 const SIMPLE_MOOD_BEFORE: Array<{
@@ -212,6 +214,7 @@ export default function IsoJukeboxView({
   onChangeRampMode,
   rasPulseEnabled = false,
   onToggleRasPulse,
+  onOpenTutorial,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
@@ -553,6 +556,17 @@ export default function IsoJukeboxView({
               <Lock className="w-4 h-4 text-wildwoods-gold" />
               Simple Full-Screen View
             </button>
+
+            {onOpenTutorial && (
+              <button
+                type="button"
+                onClick={onOpenTutorial}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/50 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
+              >
+                <HelpCircle className="w-4 h-4 text-wildwoods-gold" />
+                How to Use
+              </button>
+            )}
           </div>
         </div>
       </section>

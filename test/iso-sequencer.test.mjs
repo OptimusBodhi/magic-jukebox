@@ -27,7 +27,7 @@ test('Live iTunes Search API returns valid 30-second AAC previewUrl streams with
   assert.ok(validResults.length > 0, 'Must return at least one track with a valid previewUrl');
 });
 
-test('Guided Onboarding Interview module & UI component exist and define 6 clinical domains', () => {
+test('Guided Onboarding Interview module & UI component exist and define both 60-Second Express Builder and 6-Question Story Setup', () => {
   const onboardingLib = fs.readFileSync(
     path.resolve('src/lib/onboarding-interview.ts'),
     'utf8'
@@ -36,9 +36,15 @@ test('Guided Onboarding Interview module & UI component exist and define 6 clini
     path.resolve('src/components/GuidedOnboardingView.tsx'),
     'utf8'
   );
+  const tutorialModal = fs.readFileSync(
+    path.resolve('src/components/SimpleTutorialModal.tsx'),
+    'utf8'
+  );
   assert.match(onboardingLib, /synthesizeInterviewIntoJukebox/);
   assert.match(onboardingLib, /SAMPLE_INTERVIEW_PERSONAS/);
-  assert.match(onboardingView, /The 6-Question “Music Detective” Guided Interview/);
+  assert.match(onboardingView, /Easy 3-Step Express Setup/);
+  assert.match(onboardingView, /Hear Sample/);
+  assert.match(tutorialModal, /How to Build &amp; Use Your Magic Jukebox/);
 });
 
 test('Shareable Family URL link encoder/decoder and 1-Click Streaming/Care Sheet utilities exist', () => {

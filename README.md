@@ -7,20 +7,19 @@
 
 ## 1. User Experience & Core Modules
 
-1. **`Start Here` Landing Page (`src/components/LandingHomeView.tsx`)**
+1. **`Start Here` Landing Page & Beginner-Friendly 4-Step Visual Tutorial (`src/components/LandingHomeView.tsx` & `src/components/SimpleTutorialModal.tsx`)**
    - Clean, low-word-count entry screen that separates two primary workflows:
-     - **Create Your Own • Real Family Use**: Launches a blank 6-Question Guided Setup to build a custom Jukebox for a loved one in ~2 minutes.
+     - **Create Your Own • Easy Family Setup**: Launches the **60-Second 3-Step Express Builder** (or full 6-question setup) to build a custom Jukebox for a loved one right away.
      - **Interactive Demo • Sample Patient**: Opens the pre-loaded demo profile (**Arthur Pendelton, Born 1944**) clearly badged as sample demo data.
-   - Displays a transparent **Current Pilot Status** summary explaining what works today in the browser vs. Phase 2 roadmap items.
+   - **Interactive 4-Step Visual Tutorial (`❓ How It Works`)**: Accessible anytime from the top navigation bar, the `Start Here` hero, the Playlist Builder, and the Jukebox Player. Walks non-technical family members through building a playlist, playing music & tapping moods, adding new songs/memories, and using the speed/pace matcher.
 
-2. **6-Question Guided Intake Interview (`src/components/GuidedOnboardingView.tsx` & `src/lib/onboarding-interview.ts`)**
-   - Modeled on **Dr. Linda Gerdner’s Assessment of Individualized Personal Music (IMIA, 7th Ed.)** and the **Clinical Iso-Principle (`NCT04236557`)**:
-     1. *Identity & Reminiscence Window* (Calculates the Ages 10–30 Bump across 3 epochs)
-     2. *Formative Youth & Rhythm (Ages 10–17)* $\rightarrow$ Phase 1 High-Energy State Match (`110–125 BPM`)
-     3. *Courtship & Heart Songs (Ages 18–25)* $\rightarrow$ Phase 2 Acoustic Modulation Bridge (`82–102 BPM`) & Caregiver Duet Prompts
-     4. *Sanctuary, Faith & Deep Calm* $\rightarrow$ Phase 3 Parasympathetic Resolution (`60–70 BPM`)
-     5. *Red Flag Trauma & Trigger Screen* $\rightarrow$ Pre-quarantines bereavement or overstimulating tracks
-     6. *Circadian Shield & Starting Mood Calibration* $\rightarrow$ Arms playback 30 minutes prior to peak sundowning
+2. **60-Second 3-Step Express Playlist Builder & 6-Question Story Setup (`src/components/GuidedOnboardingView.tsx` & `src/lib/onboarding-interview.ts`)**
+   - **Default 3-Step Express Mode (For Non-Technical Users)**:
+     1. *Who is this Jukebox for?* — Enter their name and birth year (automatically computes their **Ages 10–30 Golden Song Years**).
+     2. *Tap a Few Music Styles They Enjoy* — Big tactile cards for upbeat teen styles and peaceful comfort styles, each with an inline **`🔊 Hear Sample`** button to audition a real song right inside setup!
+     3. *Any Special Song, Singer, or Memory? (Optional)* — Add a wedding song or family story, or click **Build & Open Jukebox Now** immediately.
+   - **Detailed 6-Step Family Story Mode (With Optional Clinical Notes Toggle)**:
+     - Modeled on **Dr. Linda Gerdner’s Assessment of Individualized Personal Music (IMIA, 7th Ed.)** and the **Clinical Iso-Principle (`NCT04236557`)**, written in warm everyday family language by default with an optional **`Show Clinical Science Notes`** toggle for clinicians.
    - Includes **Start Blank (For My Loved One)** as well as 3 pre-filled sample personas (*Eleanor Vance b. 1938*, *Arthur Pendelton b. 1944*, *Mateo Morales b. 1950*).
 
 3. **Simple Personal Jukebox + Expandable Clinical Sequencer (`src/components/IsoJukeboxView.tsx`)**
