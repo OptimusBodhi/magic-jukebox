@@ -57,6 +57,9 @@ export default function MagicJukeboxApp() {
   const [patient, setPatient] = useState<PatientProfile>(DEFAULT_PATIENT_PROFILE);
   const [isCustomProfile, setIsCustomProfile] = useState<boolean>(false);
   const [interviewStartBlank, setInterviewStartBlank] = useState<boolean>(false);
+  const [savedInterviewAnswers, setSavedInterviewAnswers] =
+    useState< Record<string, unknown> | null>(null);
+  const [hasLoadedStorage, setHasLoadedStorage] = useState<boolean>(false);
   const [library, setLibrary] = useState<BiographicalTrack[]>(ARTHUR_SEED_TRACKS);
   const [quarantinedList, setQuarantinedList] = useState(INITIAL_QUARANTINED_TRACKS);
   const [barsLogs, setBarsLogs] = useState<BarsSessionLog[]>(INITIAL_BARS_LOGS);
@@ -174,6 +177,12 @@ export default function MagicJukeboxApp() {
         if (parsed.patient) setPatient(parsed.patient);
         if (typeof parsed.isCustomProfile === 'boolean') {
           setIsCustomProfile(parsed.isCustomProfile);
+          if (parsed.isCustomProfile) {
+            setActiveTab('jukebox');
+          }
+        }
+        if (parsed.savedInterviewAnswers) {
+          setSavedInterviewAnswers(parsed.savedInterviewAnswers);
         }
         if (Array.isArray(parsed.library) && parsed.library.length > 0) {
           initialTracks = parsed.library;
@@ -184,6 +193,8 @@ export default function MagicJukeboxApp() {
       }
     } catch {
       // Ignore storage parse error
+    } finally {
+      setHasLoadedStorage(true);
     }
 
     // Hydrate all library tracks with live iTunes 30-second AAC preview streams
@@ -192,14 +203,16 @@ export default function MagicJukeboxApp() {
     });
   }, []);
 
-  // Save state changes to LocalStorage
+  // Save state changes to LocalStorage (only after initial load has completed so we never overwrite saved data with defaults!)
   useEffect(() => {
+    if (!hasLoadedStorage) return;
     try {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
           patient,
           isCustomProfile,
+          savedInterviewAnswers,
           library,
           quarantinedList,
           barsLogs,
@@ -208,7 +221,7 @@ export default function MagicJukeboxApp() {
     } catch {
       // Ignore storage quota errors
     }
-  }, [patient, isCustomProfile, library, quarantinedList, barsLogs]);
+  }, [hasLoadedStorage, patient, isCustomProfile, savedInterviewAnswers, library, quarantinedList, barsLogs]);
 
   // Compute the 3-Phase Iso-Principle Trajectory whenever library, compass, or quarantine changes
   const trajectory = useMemo(() => {
@@ -562,6 +575,7 @@ export default function MagicJukeboxApp() {
     }
     setPatient(DEFAULT_PATIENT_PROFILE);
     setIsCustomProfile(false);
+    setSavedInterviewAnswers(null);
     setQuarantinedList(INITIAL_QUARANTINED_TRACKS);
     setBarsLogs(INITIAL_BARS_LOGS);
     setCurrentStateId('agitated_sundowning');
@@ -640,7 +654,7 @@ export default function MagicJukeboxApp() {
               type="button"
               onClick={() => {
                 setIsMoreMenuOpen(false);
-                setInterviewStartBlank(true);
+                setInterviewStartBlank(!isCustomProfile);
                 setActiveTab('interview');
               }}
               className={`min-h-[42px] px-3 sm:px-4 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-1.5 transition ${
@@ -859,12 +873,26 @@ export default function MagicJukeboxApp() {
             rasPulseEnabled={rasPulseEnabled}
             onToggleRasPulse={() => setRasPulseEnabled((prev) => !prev)}
             onOpenTutorial={() => setIsTutorialOpen(true)}
+            onUpdatePatientProfile={(updates) => {
+              setPatient((prev) => ({ ...prev, ...updates }));
+              setIsCustomProfile(true);
+            }}
           />
         )}
 
         {activeTab === 'interview' && (
           <GuidedOnboardingView
             startBlank={interviewStartBlank}
+            existingPatient={patient}
+            isCustomProfile={isCustomProfile}
+            initialSavedAnswers={savedInterviewAnswers}
+            onLiveUpdateProfile={(updatedFields, latestAnswers) => {
+              setPatient((prev) => ({ ...prev, ...updatedFields }));
+              setIsCustomProfile(true);
+              setSavedInterviewAnswers(
+                latestAnswers as unknown as Record<string, unknown>
+              );
+            }}
             onOpenTutorial={() => setIsTutorialOpen(true)}
             onCompleteInterview={({
               profile: newProfile,
@@ -873,10 +901,14 @@ export default function MagicJukeboxApp() {
               initialCurrentState,
               initialTargetState,
               isCustom,
+              answers: completedAnswers,
             }) => {
               stopAllAudio();
               setPatient(newProfile);
               setIsCustomProfile(isCustom);
+              setSavedInterviewAnswers(
+                completedAnswers as unknown as Record<string, unknown>
+              );
               if (synthesizedTracks.length >= 6) {
                 setLibrary(synthesizedTracks);
               } else {
@@ -890,9 +922,9 @@ export default function MagicJukeboxApp() {
               setActiveTrackId(null);
               setActiveTab('jukebox');
               setInterviewCompleteBanner(
-                `✨ Custom Jukebox Created! Generated ${newProfile.name}’s personalized 3-Phase Iso-Principle Jukebox (${
+                `✨ Saved ${newProfile.name}’s Jukebox (${
                   newProfile.birthYear + 10
-                }–${newProfile.birthYear + 30} Reminiscence Bump) with verified audio streams.`
+                }–${newProfile.birthYear + 30} Favorite Youth Era) and updated playlist!`
               );
               setTimeout(() => setInterviewCompleteBanner(null), 9000);
             }}

@@ -99,6 +99,7 @@ interface IsoJukeboxViewProps {
   rasPulseEnabled?: boolean;
   onToggleRasPulse?: () => void;
   onOpenTutorial?: () => void;
+  onUpdatePatientProfile?: (updates: Partial<PatientProfile>) => void;
 }
 
 const SIMPLE_MOOD_BEFORE: Array<{
@@ -218,10 +219,14 @@ export default function IsoJukeboxView({
   rasPulseEnabled = false,
   onToggleRasPulse,
   onOpenTutorial,
+  onUpdatePatientProfile,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
   const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
+  const [isEditingHeaderProfile, setIsEditingHeaderProfile] = useState(false);
+  const [draftName, setDraftName] = useState(patient.preferredName);
+  const [draftBirthYear, setDraftBirthYear] = useState(patient.birthYear);
   const [selectedAfterMoodId, setSelectedAfterMoodId] = useState<string | null>(null);
   const [moodLoggedToast, setMoodLoggedToast] = useState<string | null>(null);
   const [quarantineToast, setQuarantineToast] = useState<string | null>(null);
@@ -512,7 +517,7 @@ export default function IsoJukeboxView({
             <div className="flex flex-wrap items-center gap-2">
               {isCustomProfile ? (
                 <span className="px-3 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-200 text-xs font-bold">
-                  ✓ Custom Family Jukebox
+                  ✓ Saved Personal Jukebox
                 </span>
               ) : (
                 <span className="px-3 py-0.5 rounded-full bg-wildwoods-amber/25 border border-wildwoods-amber text-wildwoods-gold text-xs font-bold">
@@ -520,13 +525,86 @@ export default function IsoJukeboxView({
                 </span>
               )}
               <span className="text-xs text-wildwoods-mint">
-                Favorite Era: {patient.birthYear + 10}–{patient.birthYear + 30}
+                Favorite Era: {patient.birthYear + 10}–{patient.birthYear + 30} (Born{' '}
+                {patient.birthYear})
               </span>
+              {onUpdatePatientProfile && !isEditingHeaderProfile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftName(patient.preferredName);
+                    setDraftBirthYear(patient.birthYear);
+                    setIsEditingHeaderProfile(true);
+                  }}
+                  className="px-2.5 py-0.5 rounded-lg bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/40 text-xs font-bold inline-flex items-center gap-1 transition"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Quick Edit Name / Year
+                </button>
+              )}
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-serif font-bold text-wildwoods-cream">
-              {patient.preferredName}’s Personal Jukebox
-            </h1>
+            {isEditingHeaderProfile && onUpdatePatientProfile ? (
+              <div className="p-3.5 rounded-2xl bg-wildwoods-forest border-2 border-wildwoods-amber flex flex-wrap items-end gap-3 mt-2">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-wildwoods-gold mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    className="min-h-[42px] px-3 py-1.5 rounded-xl bg-wildwoods-cream text-wildwoods-slate font-bold text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-wildwoods-gold mb-1">
+                    Birth Year
+                  </label>
+                  <input
+                    type="number"
+                    min={1915}
+                    max={2005}
+                    value={draftBirthYear}
+                    onChange={(e) => setDraftBirthYear(Number(e.target.value) || 1945)}
+                    className="w-28 min-h-[42px] px-3 py-1.5 rounded-xl bg-wildwoods-cream text-wildwoods-slate font-bold text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clean = draftName.trim() || patient.preferredName;
+                    onUpdatePatientProfile({
+                      name: clean,
+                      preferredName: clean.split(' ')[0] || clean,
+                      birthYear: draftBirthYear,
+                    });
+                    setIsEditingHeaderProfile(false);
+                    setMoodLoggedToast(
+                      `✓ Saved profile changes: ${clean} (Born ${draftBirthYear} • Youth Era ${
+                        draftBirthYear + 10
+                      }–${draftBirthYear + 30})`
+                    );
+                    setTimeout(() => setMoodLoggedToast(null), 4000);
+                  }}
+                  className="min-h-[42px] px-4 py-1.5 rounded-xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs flex items-center gap-1.5 shadow"
+                >
+                  <Check className="w-4 h-4" />
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingHeaderProfile(false)}
+                  className="min-h-[42px] px-3 py-1.5 rounded-xl bg-wildwoods-slate text-wildwoods-mint font-bold text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <h1 className="text-2xl md:text-3xl font-serif font-bold text-wildwoods-cream">
+                {patient.preferredName}’s Personal Jukebox
+              </h1>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">

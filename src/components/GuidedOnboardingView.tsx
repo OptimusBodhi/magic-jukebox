@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   UserCheck,
+  Save,
 } from 'lucide-react';
 import {
   ACOUSTIC_SENSITIVITY_OPTIONS,
@@ -32,6 +33,13 @@ import { searchItunesTracks } from '@/lib/itunes-audio';
 
 interface GuidedOnboardingViewProps {
   startBlank?: boolean;
+  existingPatient?: PatientProfile;
+  isCustomProfile?: boolean;
+  initialSavedAnswers?: Partial<GuidedInterviewAnswers> | null;
+  onLiveUpdateProfile?: (
+    updatedProfile: Partial<PatientProfile>,
+    latestAnswers: GuidedInterviewAnswers
+  ) => void;
   onOpenTutorial?: () => void;
   onCompleteInterview: (payload: {
     profile: PatientProfile;
@@ -47,6 +55,7 @@ interface GuidedOnboardingViewProps {
     initialCurrentState: CurrentEmotionalStateId;
     initialTargetState: TargetTherapeuticStateId;
     isCustom: boolean;
+    answers: GuidedInterviewAnswers;
   }) => void;
 }
 
@@ -78,6 +87,10 @@ const BLANK_FAMILY_ANSWERS: GuidedInterviewAnswers = {
 
 export default function GuidedOnboardingView({
   startBlank = false,
+  existingPatient,
+  isCustomProfile = false,
+  initialSavedAnswers,
+  onLiveUpdateProfile,
   onOpenTutorial,
   onCompleteInterview,
 }: GuidedOnboardingViewProps) {
@@ -86,12 +99,81 @@ export default function GuidedOnboardingView({
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(false);
   const [showExtraDetails, setShowExtraDetails] = useState<boolean>(false);
   const [activePersonaId, setActivePersonaId] = useState<string>(
-    startBlank ? 'custom-blank' : 'eleanor-1938'
+    isCustomProfile ? 'custom-saved' : startBlank ? 'custom-blank' : 'eleanor-1938'
   );
-  const [answers, setAnswers] = useState<GuidedInterviewAnswers>(
-    startBlank ? BLANK_FAMILY_ANSWERS : SAMPLE_INTERVIEW_PERSONAS[0].answers
-  );
+  const [answers, setAnswers] = useState<GuidedInterviewAnswers>(() => {
+    if (initialSavedAnswers) {
+      return {
+        ...BLANK_FAMILY_ANSWERS,
+        ...initialSavedAnswers,
+        fullName:
+          initialSavedAnswers.fullName ||
+          existingPatient?.name ||
+          '',
+        preferredName:
+          initialSavedAnswers.preferredName ||
+          existingPatient?.preferredName ||
+          '',
+        birthYear:
+          initialSavedAnswers.birthYear ||
+          existingPatient?.birthYear ||
+          1945,
+      };
+    }
+    if (isCustomProfile && existingPatient) {
+      return {
+        ...BLANK_FAMILY_ANSWERS,
+        fullName: existingPatient.name,
+        preferredName: existingPatient.preferredName,
+        birthYear: existingPatient.birthYear,
+        hometown: existingPatient.hometown,
+        formerOccupation: existingPatient.formerOccupation,
+        culturalUpbringing: existingPatient.musicalHeritage,
+        sundowningPeakTime: existingPatient.sundowningPeakTime,
+      };
+    }
+    return startBlank ? BLANK_FAMILY_ANSWERS : SAMPLE_INTERVIEW_PERSONAS[0].answers;
+  });
   const [isSynthesizing, setIsSynthesizing] = useState<boolean>(false);
+  const [autoSavedToast, setAutoSavedToast] = useState<boolean>(false);
+
+  // Immediately persist any edits to Name, Birth Year, Hometown, etc. so changes are never lost if user clicks "Play Jukebox" in the top bar!
+  const updateAnswersAndSync = (nextAnswers: GuidedInterviewAnswers) => {
+    setAnswers(nextAnswers);
+    if (onLiveUpdateProfile) {
+      const cleanName =
+        nextAnswers.fullName.trim() ||
+        nextAnswers.preferredName.trim() ||
+        existingPatient?.name ||
+        'My Loved One';
+      const cleanPref =
+        nextAnswers.preferredName.trim() ||
+        cleanName.split(' ')[0] ||
+        'My Loved One';
+      onLiveUpdateProfile(
+        {
+          name: cleanName,
+          preferredName: cleanPref,
+          birthYear: nextAnswers.birthYear,
+          hometown: nextAnswers.hometown || existingPatient?.hometown || '',
+          formerOccupation:
+            nextAnswers.formerOccupation || existingPatient?.formerOccupation || '',
+          musicalHeritage:
+            nextAnswers.culturalUpbringing || existingPatient?.musicalHeritage || '',
+          sundowningPeakTime:
+            nextAnswers.sundowningPeakTime || existingPatient?.sundowningPeakTime || '16:30',
+        },
+        nextAnswers
+      );
+      setAutoSavedToast(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!autoSavedToast) return;
+    const t = setTimeout(() => setAutoSavedToast(false), 2500);
+    return () => clearTimeout(t);
+  }, [autoSavedToast]);
 
   // Instant Audio Style Sample Player state
   const [playingStyleId, setPlayingStyleId] = useState<string | null>(null);
@@ -144,7 +226,7 @@ export default function GuidedOnboardingView({
   const handleStartBlankCustom = () => {
     stopSampleAudio();
     setActivePersonaId('custom-blank');
-    setAnswers({ ...BLANK_FAMILY_ANSWERS });
+    updateAnswersAndSync({ ...BLANK_FAMILY_ANSWERS });
     setStep(1);
     setShowSampleLoader(false);
   };
@@ -154,7 +236,7 @@ export default function GuidedOnboardingView({
     const found = SAMPLE_INTERVIEW_PERSONAS.find((p) => p.id === personaId);
     if (found) {
       setActivePersonaId(found.id);
-      setAnswers({ ...found.answers });
+      updateAnswersAndSync({ ...found.answers });
       setShowSampleLoader(false);
     }
   };
@@ -181,6 +263,7 @@ export default function GuidedOnboardingView({
         initialCurrentState: effectiveAnswers.initialCurrentState,
         initialTargetState: effectiveAnswers.initialTargetState,
         isCustom: true,
+        answers: effectiveAnswers,
       });
     } finally {
       setIsSynthesizing(false);
@@ -224,16 +307,33 @@ export default function GuidedOnboardingView({
           })}
         </div>
 
-        {onOpenTutorial && (
+        <div className="flex items-center gap-2">
+          {autoSavedToast && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 text-xs font-extrabold">
+              <Save className="w-3.5 h-3.5 text-emerald-700" />
+              Saved!
+            </span>
+          )}
           <button
             type="button"
-            onClick={onOpenTutorial}
-            className="min-h-[40px] px-3 py-1.5 rounded-xl bg-wildwoods-parchment hover:bg-wildwoods-sand text-wildwoods-slate font-bold text-xs flex items-center gap-1.5"
+            disabled={isSynthesizing}
+            onClick={handleBuildPersonalizedJukebox}
+            className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition"
           >
-            <HelpCircle className="w-4 h-4 text-wildwoods-amber" />
-            Help
+            <Sparkles className="w-3.5 h-3.5" />
+            {isSynthesizing ? 'Saving...' : 'Save & Open Jukebox'}
           </button>
-        )}
+          {onOpenTutorial && (
+            <button
+              type="button"
+              onClick={onOpenTutorial}
+              className="min-h-[40px] px-3 py-1.5 rounded-xl bg-wildwoods-parchment hover:bg-wildwoods-sand text-wildwoods-slate font-bold text-xs flex items-center gap-1.5"
+            >
+              <HelpCircle className="w-4 h-4 text-wildwoods-amber" />
+              Help
+            </button>
+          )}
+        </div>
       </div>
 
       {/* =================================================================== */}
@@ -266,7 +366,7 @@ export default function GuidedOnboardingView({
                 type="text"
                 value={answers.preferredName || answers.fullName}
                 onChange={(e) =>
-                  setAnswers({
+                  updateAnswersAndSync({
                     ...answers,
                     preferredName: e.target.value,
                     fullName: e.target.value,
@@ -292,7 +392,10 @@ export default function GuidedOnboardingView({
                   max={2005}
                   value={answers.birthYear}
                   onChange={(e) =>
-                    setAnswers({ ...answers, birthYear: Number(e.target.value) || 1945 })
+                    updateAnswersAndSync({
+                      ...answers,
+                      birthYear: Number(e.target.value) || 1945,
+                    })
                   }
                   className="w-full min-h-[60px] px-5 py-3 rounded-2xl bg-wildwoods-slate text-wildwoods-gold font-serif font-bold text-3xl text-center"
                 />
@@ -399,7 +502,7 @@ export default function GuidedOnboardingView({
                   <div
                     key={opt.id}
                     onClick={() =>
-                      setAnswers({
+                      updateAnswersAndSync({
                         ...answers,
                         youthStyles: toggleArrayItem(answers.youthStyles, opt.id),
                       })
@@ -409,7 +512,7 @@ export default function GuidedOnboardingView({
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setAnswers({
+                        updateAnswersAndSync({
                           ...answers,
                           youthStyles: toggleArrayItem(answers.youthStyles, opt.id),
                         });
@@ -482,7 +585,7 @@ export default function GuidedOnboardingView({
                   <div
                     key={opt.id}
                     onClick={() =>
-                      setAnswers({
+                      updateAnswersAndSync({
                         ...answers,
                         sanctuaryStyles: toggleArrayItem(answers.sanctuaryStyles, opt.id),
                       })
@@ -492,7 +595,7 @@ export default function GuidedOnboardingView({
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setAnswers({
+                        updateAnswersAndSync({
                           ...answers,
                           sanctuaryStyles: toggleArrayItem(answers.sanctuaryStyles, opt.id),
                         });
@@ -611,7 +714,7 @@ export default function GuidedOnboardingView({
                 type="text"
                 value={answers.courtshipSongOrArtist}
                 onChange={(e) =>
-                  setAnswers({ ...answers, courtshipSongOrArtist: e.target.value })
+                  updateAnswersAndSync({ ...answers, courtshipSongOrArtist: e.target.value })
                 }
                 placeholder="e.g., Frank Sinatra, Nat King Cole, Amazing Grace"
                 className="w-full min-h-[54px] px-4 py-3 rounded-2xl bg-wildwoods-cream border-2 border-wildwoods-sand text-base font-bold text-wildwoods-slate"
@@ -630,7 +733,7 @@ export default function GuidedOnboardingView({
                 type="text"
                 value={answers.courtshipMemoryStory}
                 onChange={(e) =>
-                  setAnswers({ ...answers, courtshipMemoryStory: e.target.value })
+                  updateAnswersAndSync({ ...answers, courtshipMemoryStory: e.target.value })
                 }
                 placeholder="e.g., Our wedding song in 1965..."
                 className="w-full min-h-[54px] px-4 py-3 rounded-2xl bg-wildwoods-cream border-2 border-wildwoods-sand text-base text-wildwoods-slate"
@@ -690,7 +793,7 @@ export default function GuidedOnboardingView({
                     type="text"
                     value={answers.redFlagSongsOrArtists}
                     onChange={(e) =>
-                      setAnswers({ ...answers, redFlagSongsOrArtists: e.target.value })
+                      updateAnswersAndSync({ ...answers, redFlagSongsOrArtists: e.target.value })
                     }
                     placeholder="e.g., Danny Boy, or leave blank"
                     className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-wildwoods-sand text-sm"
@@ -705,7 +808,9 @@ export default function GuidedOnboardingView({
                     <input
                       type="text"
                       value={answers.hometown}
-                      onChange={(e) => setAnswers({ ...answers, hometown: e.target.value })}
+                      onChange={(e) =>
+                        updateAnswersAndSync({ ...answers, hometown: e.target.value })
+                      }
                       placeholder="e.g., Savannah, GA"
                       className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-wildwoods-sand text-sm"
                     />
@@ -718,7 +823,10 @@ export default function GuidedOnboardingView({
                       type="text"
                       value={answers.spouseOrCompanionName}
                       onChange={(e) =>
-                        setAnswers({ ...answers, spouseOrCompanionName: e.target.value })
+                        updateAnswersAndSync({
+                          ...answers,
+                          spouseOrCompanionName: e.target.value,
+                        })
                       }
                       placeholder="e.g., Clara, Walter"
                       className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-wildwoods-sand text-sm"
@@ -738,7 +846,7 @@ export default function GuidedOnboardingView({
                           key={sens}
                           type="button"
                           onClick={() =>
-                            setAnswers({
+                            updateAnswersAndSync({
                               ...answers,
                               acousticSensitivities: toggleArrayItem(
                                 answers.acousticSensitivities,
