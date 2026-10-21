@@ -12,15 +12,31 @@ import {
   PlusCircle,
   Play,
   HeartPulse,
+  Stethoscope,
+  Copy,
+  ShieldAlert,
+  Code2,
 } from 'lucide-react';
 import {
   BARS_SCALE_DEFINITIONS,
   BarsSessionLog,
+  BiographicalTrack,
+  IsoTrajectoryResult,
   PatientProfile,
 } from '@/lib/iso-sequencer';
+import { buildFhirR4EpicBundle } from '@/lib/fhir-epic-adapter';
 
 interface ClinicalTelemetryViewProps {
   patient: PatientProfile;
+  trajectory: IsoTrajectoryResult;
+  library: BiographicalTrack[];
+  quarantinedList: Array<{
+    id: string;
+    title: string;
+    artist: string;
+    year: number;
+    reason: string;
+  }>;
   logs: BarsSessionLog[];
   onAddLog: (log: BarsSessionLog) => void;
   onUpdateSundowningTime: (peakTime: string) => void;
@@ -29,6 +45,9 @@ interface ClinicalTelemetryViewProps {
 
 export default function ClinicalTelemetryView({
   patient,
+  trajectory,
+  library,
+  quarantinedList,
   logs,
   onAddLog,
   onUpdateSundowningTime,
@@ -43,6 +62,25 @@ export default function ClinicalTelemetryView({
   const [notes, setNotes] = useState<string>('');
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
+  const [ehrViewTab, setEhrViewTab] = useState<'flowsheet' | 'fhir_json'>('flowsheet');
+
+  const epicRecord = buildFhirR4EpicBundle(
+    patient,
+    trajectory,
+    library,
+    quarantinedList,
+    logs
+  );
+
+  const handleCopyFhirJson = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(epicRecord.fhirBundle, null, 2));
+      setSavedNotice('Copied standardized HL7 FHIR R4 Bundle JSON (Epic / SMART on FHIR) to clipboard!');
+      setTimeout(() => setSavedNotice(null), 5000);
+    } catch {
+      // Ignore clipboard error
+    }
+  };
 
   // Compute proactive trigger time (30 minutes prior to peak Time)
   const computeProactiveStartTime = (peakTimeStr: string): string => {
@@ -124,10 +162,12 @@ export default function ClinicalTelemetryView({
           <button
             type="button"
             onClick={() => setExportModalOpen(!exportModalOpen)}
-            className="min-h-[48px] px-5 py-3 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss border border-wildwoods-sage text-wildwoods-cream font-bold text-sm flex items-center gap-2 shrink-0 transition"
+            className="min-h-[48px] px-5 py-3 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-sm flex items-center gap-2 shrink-0 shadow-lg transition"
           >
-            <FileSpreadsheet className="w-4 h-4 text-wildwoods-gold" />
-            {exportModalOpen ? 'Hide Clinical Audit Summary' : 'Export Clinical BPSD Report'}
+            <Stethoscope className="w-4 h-4" />
+            {exportModalOpen
+              ? 'Hide Epic / HL7 FHIR Medical Record'
+              : 'Preview Epic / HL7 FHIR Medical Record'}
           </button>
         </div>
 
@@ -183,31 +223,149 @@ export default function ClinicalTelemetryView({
           </div>
         </div>
 
+        {/* Standardized Epic / HL7 FHIR R4 Medical Record Integration Panel */}
         {exportModalOpen && (
-          <div className="bg-wildwoods-forest p-5 rounded-2xl border-2 border-wildwoods-amber space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-wildwoods-gold uppercase tracking-wider">
-                Exportable Clinical Audit Trail (CMAI / NPI-Q / BARS Summary)
-              </h3>
-              <span className="text-xs text-wildwoods-mint">Patient: {patient.name}</span>
+          <div className="bg-wildwoods-forest p-6 rounded-3xl border-2 border-wildwoods-amber space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-wildwoods-moss pb-4">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-gold flex items-center gap-1.5">
+                  <Stethoscope className="w-4 h-4" />
+                  EHR Interoperability Preview • {epicRecord.flowsheetSummary.standardVersion}
+                </span>
+                <h3 className="text-xl font-serif font-bold text-wildwoods-cream mt-0.5">
+                  Standardized Medical Record Profile (Epic / Oracle Health / NHS Digital)
+                </h3>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEhrViewTab('flowsheet')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                    ehrViewTab === 'flowsheet'
+                      ? 'bg-wildwoods-amber text-wildwoods-slate'
+                      : 'bg-wildwoods-slate text-wildwoods-mint'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Epic Nursing Flowsheet View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEhrViewTab('fhir_json')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                    ehrViewTab === 'fhir_json'
+                      ? 'bg-wildwoods-amber text-wildwoods-slate'
+                      : 'bg-wildwoods-slate text-wildwoods-mint'
+                  }`}
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  HL7 FHIR R4 Bundle JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyFhirJson}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy FHIR JSON
+                </button>
+              </div>
             </div>
-            <pre className="text-xs font-mono bg-wildwoods-slate p-4 rounded-xl overflow-x-auto text-emerald-200">
-              {JSON.stringify(
-                {
-                  patient: patient.name,
-                  birthYear: patient.birthYear,
-                  reminiscenceBump: `${patient.birthYear + 10}-${patient.birthYear + 30}`,
-                  protocol: 'Clinical Iso-Principle + Gerdner IMIA (NCT04236557)',
-                  sessionsLogged: logs.length,
-                  meanPreBars: Number(avgPreBars),
-                  meanPostBars: Number(avgPostBars),
-                  prnPsychotropicAvoidedCount: prnAvoidedCount,
-                  recentLogs: logs.slice(-3),
-                },
-                null,
-                2
-              )}
-            </pre>
+
+            {ehrViewTab === 'flowsheet' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
+                {/* Standardized Clinical Coding & Patient Identity */}
+                <div className="lg:col-span-5 bg-wildwoods-slate p-4 rounded-2xl border border-wildwoods-moss space-y-3">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-gold">
+                    1. Standardized EHR Coding &amp; Patient Biographical Anchor
+                  </div>
+                  <div className="space-y-1.5 text-wildwoods-cream">
+                    <div>
+                      <span className="text-wildwoods-mint">Patient:</span>{' '}
+                      <strong>{epicRecord.flowsheetSummary.patientSummary.displayName}</strong> (b.{' '}
+                      {epicRecord.flowsheetSummary.patientSummary.birthYear})
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Reminiscence Bump (cACC Window):</span>{' '}
+                      <strong>
+                        {epicRecord.flowsheetSummary.patientSummary.reminiscenceBumpWindow}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Procedure Code:</span>{' '}
+                      <code className="text-emerald-300">
+                        {epicRecord.flowsheetSummary.snomedInterventionCode}
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Diagnosis Target:</span>{' '}
+                      <code className="text-amber-300">
+                        {epicRecord.flowsheetSummary.icd10TargetCode}
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Observation Scale:</span>{' '}
+                      <code className="text-wildwoods-mint">
+                        {epicRecord.flowsheetSummary.loincAssessmentCode}
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">CMS Quality Measure:</span>{' '}
+                      <strong>{epicRecord.flowsheetSummary.cmsQualityMeasure}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Non-Pharmacological CarePlan Order & Contraindication Flags */}
+                <div className="lg:col-span-7 bg-wildwoods-slate p-4 rounded-2xl border border-wildwoods-moss space-y-3">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
+                    2. Active CarePlan Order &amp; Nursing Flowsheet Protocol
+                  </div>
+                  <div className="space-y-1.5 text-wildwoods-cream">
+                    <div>
+                      <span className="text-wildwoods-mint">Order:</span>{' '}
+                      <strong>{epicRecord.flowsheetSummary.imiaCarePlanOrder.orderName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Dosing Schedule:</span>{' '}
+                      <strong className="text-wildwoods-gold">
+                        {epicRecord.flowsheetSummary.imiaCarePlanOrder.dosingSchedule}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Phase 1 (0–7m State Match):</span>{' '}
+                      {epicRecord.flowsheetSummary.imiaCarePlanOrder.phase1Match}
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Phase 2 (8–18m Bridge):</span>{' '}
+                      {epicRecord.flowsheetSummary.imiaCarePlanOrder.phase2Bridge}
+                    </div>
+                    <div>
+                      <span className="text-wildwoods-mint">Phase 3 (19–30m Resolution):</span>{' '}
+                      {epicRecord.flowsheetSummary.imiaCarePlanOrder.phase3Resolution}
+                    </div>
+                  </div>
+
+                  {/* Nursing Contraindications (Red Flag Quarantine) */}
+                  <div className="p-3 rounded-xl bg-red-950/90 border border-red-500/40 space-y-1">
+                    <div className="font-extrabold text-red-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-red-400" />
+                      EHR Clinical Flag: Acoustic Contraindications (DO NOT PLAY)
+                    </div>
+                    {epicRecord.flowsheetSummary.nursingContraindicationFlags.map((flag, i) => (
+                      <div key={i} className="text-red-100">
+                        • <strong>{flag.track}</strong> — {flag.clinicalReason}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <pre className="text-xs font-mono bg-wildwoods-slate p-4 rounded-2xl overflow-x-auto text-emerald-200 max-h-[380px]">
+                {JSON.stringify(epicRecord.fhirBundle, null, 2)}
+              </pre>
+            )}
           </div>
         )}
       </section>

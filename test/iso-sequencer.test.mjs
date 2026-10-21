@@ -49,4 +49,13 @@ test('Shareable Family URL link encoder/decoder and 1-Click Streaming/Care Sheet
   assert.match(shareLib, /formatCaregiverPrescriptionText/);
 });
 
+test('Epic / HL7 FHIR R4 medical record interoperability adapter exists and encodes SNOMED/ICD-10/LOINC', () => {
+  const fhirLib = fs.readFileSync(path.resolve('src/lib/fhir-epic-adapter.ts'), 'utf8');
+  assert.match(fhirLib, /buildFhirR4EpicBundle/);
+  assert.match(fhirLib, /410260000/); // SNOMED CT Music Therapy
+  assert.match(fhirLib, /F03\.911/); // ICD-10-CM Dementia with agitation
+  assert.match(fhirLib, /72170-4/); // LOINC BARS assessment
+});
+
+
 

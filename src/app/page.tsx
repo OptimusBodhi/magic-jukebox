@@ -787,6 +787,9 @@ export default function MagicJukeboxApp() {
         {activeTab === 'telemetry' && (
           <ClinicalTelemetryView
             patient={patient}
+            trajectory={trajectory}
+            library={library}
+            quarantinedList={quarantinedList}
             logs={barsLogs}
             onAddLog={(newLog) => setBarsLogs((prev) => [...prev, newLog])}
             onUpdateSundowningTime={(peakTime) =>

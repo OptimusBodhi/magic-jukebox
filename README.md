@@ -35,8 +35,9 @@
 4. **Song Finder / Music Detective Studio (`src/components/MusicDetectiveView.tsx`)**
    - Connects directly to the public **iTunes Search API** (`https://itunes.apple.com/search`) with a strict **Zero Silent Cards** guardrail (`track.previewUrl` verified before render) for instant 30-second chorus discovery.
 
-5. **Care Log & Sundowning Shield (`src/components/ClinicalTelemetryView.tsx`)**
-   - 5-second Pre/Post **Behavioural Activity Rating Scale (BARS 1–7)** check-in widget, Gerdner 30-minute proactive sundowning scheduler, 6-week longitudinal chart, and JSON clinical audit export.
+5. **Care Log, Sundowning Shield & Epic / HL7 FHIR R4 Medical Record View (`src/components/ClinicalTelemetryView.tsx` & `src/lib/fhir-epic-adapter.ts`)**
+   - 5-second Pre/Post **Behavioural Activity Rating Scale (BARS 1–7)** check-in widget, Gerdner 30-minute proactive sundowning scheduler, and 6-week longitudinal chart.
+   - **Standardized EHR / Epic Medical Record Preview**: Click **`Preview Epic / HL7 FHIR Medical Record`** to inspect the patient's profile as a standardized **Epic Nursing Flowsheet Order** (`SNOMED CT 410260000` Music Therapy, `ICD-10-CM F03.911` Dementia with Agitation, `LOINC 72170-4` BARS, `CMS NQF #0680` Antipsychotic Sparing) or copy the live **HL7 FHIR R4 Bundle JSON** (`Patient`, `CarePlan`, `Flag` Contraindications, `Observation`).
 
 6. **Clinical Science & Evidence Vault (`src/components/ClinicalEvidenceVaultView.tsx`)**
    - Interactive **Jacobsen et al. (2015)** neuroanatomical breakdown (`cACC`, `ventral pre-SMA`, `DMN`), peer-reviewed clinical reference matrix, and UK competitive ecosystem audit (*Playlist for Life*, *BBC Music Memories*, *m4d Radio*, *Vera*, *MediMusic*).
