@@ -42,7 +42,7 @@ test('Guided Onboarding Interview module & UI component exist and define both 60
   );
   assert.match(onboardingLib, /synthesizeInterviewIntoJukebox/);
   assert.match(onboardingLib, /SAMPLE_INTERVIEW_PERSONAS/);
-  assert.match(onboardingView, /Easy 3-Step Express Setup/);
+  assert.match(onboardingView, /Step 1 of 3/);
   assert.match(onboardingView, /Hear Sample/);
   assert.match(tutorialModal, /How to Build &amp; Use Your Magic Jukebox/);
 });
