@@ -208,3 +208,56 @@ export function formatCaregiverPrescriptionText(
 
   return lines.join('\n');
 }
+
+/**
+ * Formats the ordered Iso-Principle playlist as a clean "Title - Artist" text list
+ * that can be pasted directly into Spotify, Soundiiz, or TuneMyMusic to create a full-length playlist.
+ */
+export function formatSpotifyImportTracklist(trajectory: IsoTrajectoryResult): string {
+  return trajectory.orderedTracks
+    .map((tr) => `${tr.title} - ${tr.artist}`)
+    .join('\n');
+}
+
+/**
+ * Formats a standard .M3U playlist file with extended metadata for local/desktop media players and importers.
+ */
+export function formatM3uPlaylist(
+  patient: PatientProfile,
+  trajectory: IsoTrajectoryResult
+): string {
+  const lines: string[] = [
+    '#EXTM3U',
+    `#PLAYLIST:${patient.preferredName}'s Magic Jukebox (${trajectory.currentState.label} to ${trajectory.targetState.label})`,
+  ];
+  for (const tr of trajectory.orderedTracks) {
+    lines.push(`#EXTINF:210,${tr.artist} - ${tr.title}`);
+    lines.push(tr.previewUrl || `https://open.spotify.com/search/${encodeURIComponent(`${tr.artist} ${tr.title}`)}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Formats a standard .CSV playlist file (Title, Artist, Year, BPM, Phase, Memory Note)
+ * compatible with Soundiiz, TuneMyMusic, and Spotify/Apple Music playlist importers.
+ */
+export function formatCsvPlaylist(trajectory: IsoTrajectoryResult): string {
+  const escapeCsv = (val: string | number) => `"${String(val).replace(/"/g, '""')}"`;
+  const rows: string[] = [
+    ['Title', 'Artist', 'Release Year', 'BPM', 'Iso-Principle Phase', 'Family Memory Note'].join(','),
+  ];
+  for (const tr of trajectory.orderedTracks) {
+    rows.push(
+      [
+        escapeCsv(tr.title),
+        escapeCsv(tr.artist),
+        escapeCsv(tr.year),
+        escapeCsv(tr.bpm),
+        escapeCsv(tr.phaseName),
+        escapeCsv(tr.memoryNote),
+      ].join(',')
+    );
+  }
+  return rows.join('\n');
+}
+

@@ -47,12 +47,21 @@ test('Guided Onboarding Interview module & UI component exist and define both 60
   assert.match(tutorialModal, /How to Build &amp; Use Your Magic Jukebox/);
 });
 
-test('Shareable Family URL link encoder/decoder and 1-Click Streaming/Care Sheet utilities exist', () => {
+test('Shareable Family URL link encoder/decoder, Spotify PKCE exporter, and CSV/M3U full-length playlist utilities exist', () => {
   const shareLib = fs.readFileSync(path.resolve('src/lib/share-and-export.ts'), 'utf8');
+  const spotifyLib = fs.readFileSync(path.resolve('src/lib/spotify-export.ts'), 'utf8');
+  const exportModal = fs.readFileSync(
+    path.resolve('src/components/FullLengthExportModal.tsx'),
+    'utf8'
+  );
   assert.match(shareLib, /encodeShareableJukeboxUrl/);
   assert.match(shareLib, /decodeShareableJukeboxParam/);
   assert.match(shareLib, /getFullSongStreamingLinks/);
   assert.match(shareLib, /formatCaregiverPrescriptionText/);
+  assert.match(shareLib, /formatSpotifyImportTracklist/);
+  assert.match(shareLib, /formatCsvPlaylist/);
+  assert.match(spotifyLib, /createFullLengthSpotifyPlaylist/);
+  assert.match(exportModal, /Play Full-Length Songs &amp; Export to Spotify/);
 });
 
 test('Epic / HL7 FHIR R4 medical record interoperability adapter exists and encodes SNOMED/ICD-10/LOINC', () => {

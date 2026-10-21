@@ -54,6 +54,7 @@ import {
 } from '@/lib/iso-sequencer';
 import { getFullSongStreamingLinks } from '@/lib/share-and-export';
 import { ItunesCandidateTrack, searchItunesTracks } from '@/lib/itunes-audio';
+import FullLengthExportModal from '@/components/FullLengthExportModal';
 
 interface IsoJukeboxViewProps {
   patient: PatientProfile;
@@ -87,7 +88,9 @@ interface IsoJukeboxViewProps {
   onAddTrackToLibrary?: (track: BiographicalTrack) => void;
   onUpdateTrackInLibrary?: (
     trackId: string,
-    updates: Partial<Pick<BiographicalTrack, 'memoryNote' | 'duetPrompt' | 'bpm' | 'energy'>>
+    updates: Partial<
+      Pick<BiographicalTrack, 'memoryNote' | 'duetPrompt' | 'bpm' | 'energy' | 'previewUrl'>
+    >
   ) => void;
   playbackRate?: number;
   onChangePlaybackRate?: (rate: number) => void;
@@ -218,6 +221,7 @@ export default function IsoJukeboxView({
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
+  const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
   const [selectedAfterMoodId, setSelectedAfterMoodId] = useState<string | null>(null);
   const [moodLoggedToast, setMoodLoggedToast] = useState<string | null>(null);
   const [quarantineToast, setQuarantineToast] = useState<string | null>(null);
@@ -537,13 +541,22 @@ export default function IsoJukeboxView({
               </button>
             )}
 
+            <button
+              type="button"
+              onClick={() => setIsFullLengthExportOpen(true)}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-400/50 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow transition"
+            >
+              <ExternalLink className="w-4 h-4 text-emerald-200" />
+              Export to Spotify / Full Songs
+            </button>
+
             {onCopyShareLink && (
               <button
                 type="button"
                 onClick={onCopyShareLink}
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white border border-emerald-400/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
               >
-                <Share2 className="w-4 h-4 text-emerald-200" />
+                <Share2 className="w-4 h-4 text-wildwoods-gold" />
                 Share Link
               </button>
             )}
@@ -1124,28 +1137,55 @@ export default function IsoJukeboxView({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowQuickAdd((prev) => !prev)}
-              className={`min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition ${
-                showQuickAdd
-                  ? 'bg-wildwoods-slate text-wildwoods-cream'
-                  : 'bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate'
-              }`}
-            >
-              {showQuickAdd ? (
-                <>
-                  <X className="w-4 h-4" />
-                  Close Add Song
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Add Song / Memory
-                </>
-              )}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsFullLengthExportOpen(true)}
+                className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Export to Spotify
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowQuickAdd((prev) => !prev)}
+                className={`min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition ${
+                  showQuickAdd
+                    ? 'bg-wildwoods-slate text-wildwoods-cream'
+                    : 'bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate'
+                }`}
+              >
+                {showQuickAdd ? (
+                  <>
+                    <X className="w-4 h-4" />
+                    Close Add Song
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Add Song / Memory
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+
+          <FullLengthExportModal
+            isOpen={isFullLengthExportOpen}
+            onClose={() => setIsFullLengthExportOpen(false)}
+            patient={patient}
+            trajectory={trajectory}
+            onAttachFullAudioFile={(trackId, fileUrl, fileName) => {
+              if (onUpdateTrackInLibrary) {
+                onUpdateTrackInLibrary(trackId, { previewUrl: fileUrl });
+              }
+              setMoodLoggedToast(
+                `🎵 Attached full-length audio file "${fileName}"! Press Play and use the Tempo & Pace Matcher.`
+              );
+              setTimeout(() => setMoodLoggedToast(null), 5500);
+            }}
+          />
 
           {/* Inline Quick-Add Song & Memory Drawer right inside the simple Jukebox */}
           {showQuickAdd && (
