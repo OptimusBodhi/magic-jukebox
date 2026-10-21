@@ -130,55 +130,6 @@ export default function MagicJukeboxApp() {
     return () => clearInterval(rampTimer);
   }, [isPlaying, rampMode]);
 
-  // Optional Rhythmic Auditory Stimulation (RAS) Tactile Beat Cue Overlay for Parkinson's Gait / Motor Pacing
-  useEffect(() => {
-    if (rasPulseIntervalRef.current) {
-      clearInterval(rasPulseIntervalRef.current);
-      rasPulseIntervalRef.current = null;
-    }
-    if (!isPlaying || !rasPulseEnabled || isMuted || !activeTrack) return;
-
-    const effectiveBpm = Math.max(45, Math.round(activeTrack.bpm * playbackRate));
-    const beatMs = Math.round((60 / effectiveBpm) * 1000);
-
-    const triggerRasTick = () => {
-      try {
-        const AudioContextClass =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        if (!audioCtxRef.current) {
-          audioCtxRef.current = new AudioContextClass();
-        }
-        const ctx = audioCtxRef.current;
-        if (ctx.state === 'suspended') ctx.resume();
-        const now = ctx.currentTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(660, now);
-        osc.frequency.exponentialRampToValueAtTime(330, now + 0.035);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.09, now + 0.005);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.05);
-      } catch {
-        // Ignore audio context errors
-      }
-    };
-
-    triggerRasTick();
-    rasPulseIntervalRef.current = setInterval(triggerRasTick, beatMs);
-    return () => {
-      if (rasPulseIntervalRef.current) {
-        clearInterval(rasPulseIntervalRef.current);
-        rasPulseIntervalRef.current = null;
-      }
-    };
-  }, [isPlaying, rasPulseEnabled, isMuted, activeTrack, playbackRate]);
-
   // Load shared URL (?share=...) or persisted state from LocalStorage on mount, then hydrate iTunes audio previews
   useEffect(() => {
     let initialTracks = ARTHUR_SEED_TRACKS;
@@ -274,6 +225,55 @@ export default function MagicJukeboxApp() {
     }
     return trajectory.orderedTracks[0];
   }, [trajectory.orderedTracks, activeTrackId]);
+
+  // Optional Rhythmic Auditory Stimulation (RAS) Tactile Beat Cue Overlay for Parkinson's Gait / Motor Pacing
+  useEffect(() => {
+    if (rasPulseIntervalRef.current) {
+      clearInterval(rasPulseIntervalRef.current);
+      rasPulseIntervalRef.current = null;
+    }
+    if (!isPlaying || !rasPulseEnabled || isMuted || !activeTrack) return;
+
+    const effectiveBpm = Math.max(45, Math.round(activeTrack.bpm * playbackRate));
+    const beatMs = Math.round((60 / effectiveBpm) * 1000);
+
+    const triggerRasTick = () => {
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioContextClass();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === 'suspended') ctx.resume();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(660, now);
+        osc.frequency.exponentialRampToValueAtTime(330, now + 0.035);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.09, now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } catch {
+        // Ignore audio context errors
+      }
+    };
+
+    triggerRasTick();
+    rasPulseIntervalRef.current = setInterval(triggerRasTick, beatMs);
+    return () => {
+      if (rasPulseIntervalRef.current) {
+        clearInterval(rasPulseIntervalRef.current);
+        rasPulseIntervalRef.current = null;
+      }
+    };
+  }, [isPlaying, rasPulseEnabled, isMuted, activeTrack, playbackRate]);
 
   // Gerdner 30-minute countdown timer effect
   useEffect(() => {
