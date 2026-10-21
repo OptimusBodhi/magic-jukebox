@@ -35,6 +35,9 @@ import {
   Pencil,
   Check,
   X,
+  Gauge,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import {
   CURRENT_EMOTIONAL_STATES,
@@ -85,6 +88,12 @@ interface IsoJukeboxViewProps {
     trackId: string,
     updates: Partial<Pick<BiographicalTrack, 'memoryNote' | 'duetPrompt' | 'bpm' | 'energy'>>
   ) => void;
+  playbackRate?: number;
+  onChangePlaybackRate?: (rate: number) => void;
+  rampMode?: 'off' | 'speed_up' | 'slow_down';
+  onChangeRampMode?: (mode: 'off' | 'speed_up' | 'slow_down') => void;
+  rasPulseEnabled?: boolean;
+  onToggleRasPulse?: () => void;
 }
 
 const SIMPLE_MOOD_BEFORE: Array<{
@@ -197,6 +206,12 @@ export default function IsoJukeboxView({
   onQuickMoodLog,
   onAddTrackToLibrary,
   onUpdateTrackInLibrary,
+  playbackRate = 1.0,
+  onChangePlaybackRate,
+  rampMode = 'off',
+  onChangeRampMode,
+  rasPulseEnabled = false,
+  onToggleRasPulse,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
@@ -920,6 +935,125 @@ export default function IsoJukeboxView({
                     Skip &amp; Never Play Again
                   </button>
                 </div>
+
+                {/* Pitch-Locked Tempo & Pace Controller (Parkinson's RAS & Motor Entrainment) */}
+                {onChangePlaybackRate && (
+                  <div className="mt-3 p-4 rounded-2xl bg-wildwoods-forest/95 border border-wildwoods-moss space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Gauge className="w-4 h-4 text-wildwoods-gold" />
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-cream">
+                          Tempo &amp; Pace Matcher
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold">
+                          🔒 Pitch Preserved (Original Key)
+                        </span>
+                      </div>
+
+                      <div className="text-xs font-mono font-bold text-wildwoods-gold">
+                        {Math.round(currentTrack.bpm * playbackRate)} BPM ({Math.round(playbackRate * 100)}% Pace)
+                      </div>
+                    </div>
+
+                    {/* Slider & Quick Step Buttons */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => onChangePlaybackRate(playbackRate - 0.05)}
+                        className="px-3 py-1.5 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-moss text-wildwoods-mint font-bold text-xs border border-wildwoods-moss transition"
+                      >
+                        -5% Slower
+                      </button>
+
+                      <input
+                        type="range"
+                        aria-label="Adjust tempo without changing pitch"
+                        min={0.65}
+                        max={1.35}
+                        step={0.01}
+                        value={playbackRate}
+                        onChange={(e) => onChangePlaybackRate(Number(e.target.value))}
+                        className="flex-1 min-w-[120px] h-2 bg-wildwoods-slate rounded-lg appearance-none cursor-pointer accent-wildwoods-amber"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => onChangePlaybackRate(playbackRate + 0.05)}
+                        className="px-3 py-1.5 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-moss text-wildwoods-mint font-bold text-xs border border-wildwoods-moss transition"
+                      >
+                        +5% Faster
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onChangePlaybackRate(1.0)}
+                        className="px-3 py-1.5 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-moss text-wildwoods-gold font-bold text-xs border border-wildwoods-amber/40 transition"
+                      >
+                        100% Reset
+                      </button>
+                    </div>
+
+                    {/* Gradual Speed-Up (Parkinson's RAS) / Slow-Down & Beat Cue Toggles */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-wildwoods-moss/70 text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {onChangeRampMode && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onChangeRampMode(rampMode === 'speed_up' ? 'off' : 'speed_up')
+                              }
+                              className={`px-3 py-1.5 rounded-xl font-bold inline-flex items-center gap-1.5 border transition ${
+                                rampMode === 'speed_up'
+                                  ? 'bg-wildwoods-amber text-wildwoods-slate border-wildwoods-amber shadow'
+                                  : 'bg-wildwoods-slate text-wildwoods-cream border-wildwoods-moss hover:bg-wildwoods-moss'
+                              }`}
+                              title="Match patient's starting pace, then gradually speed up tempo without changing vocal pitch (Parkinson's Rhythmic Auditory Stimulation)"
+                            >
+                              <TrendingUp className="w-3.5 h-3.5" />
+                              {rampMode === 'speed_up'
+                                ? 'Gradually Speeding Up... (Stop)'
+                                : 'Gradual Speed-Up (Parkinson’s / Gait Pace)'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onChangeRampMode(rampMode === 'slow_down' ? 'off' : 'slow_down')
+                              }
+                              className={`px-3 py-1.5 rounded-xl font-bold inline-flex items-center gap-1.5 border transition ${
+                                rampMode === 'slow_down'
+                                  ? 'bg-emerald-600 text-white border-emerald-400 shadow'
+                                  : 'bg-wildwoods-slate text-wildwoods-mint border-wildwoods-moss hover:bg-wildwoods-moss'
+                              }`}
+                              title="Gradually slow the song's tempo down without dropping pitch"
+                            >
+                              <TrendingDown className="w-3.5 h-3.5" />
+                              {rampMode === 'slow_down'
+                                ? 'Gradually Slowing Down... (Stop)'
+                                : 'Gradual Slow-Down'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {onToggleRasPulse && (
+                        <button
+                          type="button"
+                          onClick={onToggleRasPulse}
+                          className={`px-3 py-1.5 rounded-xl font-bold inline-flex items-center gap-1.5 border transition ${
+                            rasPulseEnabled
+                              ? 'bg-wildwoods-amber text-wildwoods-slate border-wildwoods-amber'
+                              : 'bg-wildwoods-slate text-wildwoods-mint border-wildwoods-moss hover:bg-wildwoods-moss'
+                          }`}
+                          title="Layer a gentle rhythmic beat cue synced to the song's live BPM for Parkinson's walking or movement entrainment"
+                        >
+                          🥁 {rasPulseEnabled ? 'Beat Cue: ON' : 'Beat Pulse Cue (RAS)'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* 1-Click Full Song Links */}
                 {(() => {

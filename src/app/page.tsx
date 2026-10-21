@@ -70,6 +70,11 @@ export default function MagicJukeboxApp() {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [playerMode, setPlayerMode] = useState<'receptive' | 'duet'>('receptive');
 
+  // Pitch-Preserving Tempo & Parkinson's RAS (Rhythmic Auditory Stimulation) Pacing State
+  const [playbackRate, setPlaybackRate] = useState<number>(1.0); // 0.65x to 1.35x with preservesPitch = true
+  const [rampMode, setRampMode] = useState<'off' | 'speed_up' | 'slow_down'>('off');
+  const [rasPulseEnabled, setRasPulseEnabled] = useState<boolean>(false);
+
   // Music Detective standalone preview state
   const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
@@ -82,7 +87,97 @@ export default function MagicJukeboxApp() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const detectiveAudioRef = useRef<HTMLAudioElement | null>(null);
   const synthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rasPulseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Helper: Apply pitch-preserving time-stretch (WSOLA) to HTML5 Audio element
+  const applyPitchLockedRate = (el: HTMLAudioElement | null, rate: number) => {
+    if (!el) return;
+    const safeRate = Math.max(0.65, Math.min(1.35, Number(rate.toFixed(2))));
+    el.preservesPitch = true;
+    (el as HTMLAudioElement & { mozPreservesPitch?: boolean }).mozPreservesPitch = true;
+    (el as HTMLAudioElement & { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
+    el.playbackRate = safeRate;
+  };
+
+  // Sync playbackRate to audio element whenever rate changes
+  useEffect(() => {
+    applyPitchLockedRate(audioRef.current, playbackRate);
+  }, [playbackRate]);
+
+  // Gradual Tempo Ramp (Parkinson's RAS Speed-Up or Calming Slow-Down) while playing
+  useEffect(() => {
+    if (!isPlaying || rampMode === 'off') return;
+    const rampTimer = setInterval(() => {
+      setPlaybackRate((prev) => {
+        if (rampMode === 'speed_up') {
+          const next = Number((prev + 0.01).toFixed(2));
+          if (next >= 1.25) {
+            setRampMode('off');
+            return 1.25;
+          }
+          return next;
+        } else {
+          const next = Number((prev - 0.01).toFixed(2));
+          if (next <= 0.75) {
+            setRampMode('off');
+            return 0.75;
+          }
+          return next;
+        }
+      });
+    }, 2200);
+    return () => clearInterval(rampTimer);
+  }, [isPlaying, rampMode]);
+
+  // Optional Rhythmic Auditory Stimulation (RAS) Tactile Beat Cue Overlay for Parkinson's Gait / Motor Pacing
+  useEffect(() => {
+    if (rasPulseIntervalRef.current) {
+      clearInterval(rasPulseIntervalRef.current);
+      rasPulseIntervalRef.current = null;
+    }
+    if (!isPlaying || !rasPulseEnabled || isMuted || !activeTrack) return;
+
+    const effectiveBpm = Math.max(45, Math.round(activeTrack.bpm * playbackRate));
+    const beatMs = Math.round((60 / effectiveBpm) * 1000);
+
+    const triggerRasTick = () => {
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioContextClass();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === 'suspended') ctx.resume();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(660, now);
+        osc.frequency.exponentialRampToValueAtTime(330, now + 0.035);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.09, now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } catch {
+        // Ignore audio context errors
+      }
+    };
+
+    triggerRasTick();
+    rasPulseIntervalRef.current = setInterval(triggerRasTick, beatMs);
+    return () => {
+      if (rasPulseIntervalRef.current) {
+        clearInterval(rasPulseIntervalRef.current);
+        rasPulseIntervalRef.current = null;
+      }
+    };
+  }, [isPlaying, rasPulseEnabled, isMuted, activeTrack, playbackRate]);
 
   // Load shared URL (?share=...) or persisted state from LocalStorage on mount, then hydrate iTunes audio previews
   useEffect(() => {
@@ -292,6 +387,7 @@ export default function MagicJukeboxApp() {
           audioRef.current.src = streamUrl;
           setProgressSec(0);
         }
+        applyPitchLockedRate(audioRef.current, playbackRate);
         audioRef.current.muted = isMuted;
         await audioRef.current.play();
         setIsPlaying(true);
@@ -305,7 +401,7 @@ export default function MagicJukeboxApp() {
     // Fallback Web Audio synthesis at exact BPM and Mode
     setIsPlaying(true);
     setIsGerdnerTimerRunning(true);
-    startWebAudioFallback(target.bpm, target.mode);
+    startWebAudioFallback(Math.round(target.bpm * playbackRate), target.mode);
   };
 
   const handleNextTrack = () => {
@@ -712,6 +808,15 @@ export default function MagicJukeboxApp() {
                 prev.map((t) => (t.id === trackId ? { ...t, ...updates } : t))
               );
             }}
+            playbackRate={playbackRate}
+            onChangePlaybackRate={(rate) => {
+              setRampMode('off');
+              setPlaybackRate(Math.max(0.65, Math.min(1.35, Number(rate.toFixed(2)))));
+            }}
+            rampMode={rampMode}
+            onChangeRampMode={setRampMode}
+            rasPulseEnabled={rasPulseEnabled}
+            onToggleRasPulse={() => setRasPulseEnabled((prev) => !prev)}
           />
         )}
 

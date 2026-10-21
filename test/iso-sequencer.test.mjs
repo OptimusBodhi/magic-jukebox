@@ -57,5 +57,14 @@ test('Epic / HL7 FHIR R4 medical record interoperability adapter exists and enco
   assert.match(fhirLib, /72170-4/); // LOINC BARS assessment
 });
 
+test('Pitch-preserving tempo & Parkinson RAS pace matcher is implemented in page.tsx and IsoJukeboxView.tsx', () => {
+  const pageSrc = fs.readFileSync(path.resolve('src/app/page.tsx'), 'utf8');
+  const jukeboxSrc = fs.readFileSync(path.resolve('src/components/IsoJukeboxView.tsx'), 'utf8');
+  assert.match(pageSrc, /preservesPitch\s*=\s*true/);
+  assert.match(jukeboxSrc, /Tempo &amp; Pace Matcher/);
+  assert.match(jukeboxSrc, /Gradual Speed-Up \(Parkinson’s \/ Gait Pace\)/);
+});
+
+
 
 
