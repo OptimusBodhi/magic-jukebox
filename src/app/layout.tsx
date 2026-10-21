@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Magic Jukebox — Studio Wildwoods | Precision Music Medicine for Dementia',
+  title: 'The Magic Jukebox | Precision Music Medicine for Dementia',
   description:
     'Transforming difficult emotions in Alzheimer’s and dementia care through the clinical Iso-Principle, Reminiscence Bump co-curation, and preserved cACC / ventral pre-SMA neural scaffolding.',
 };

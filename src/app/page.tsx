@@ -438,7 +438,7 @@ export default function MagicJukeboxApp() {
                   </span>
                   <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-wildwoods-moss text-wildwoods-gold text-[11px] font-bold uppercase tracking-wider">
                     <Sparkles className="w-3 h-3" />
-                    Studio Wildwoods Pilot
+                    Open Pilot
                   </span>
                 </div>
                 <p className="text-xs text-wildwoods-mint">
@@ -724,6 +724,19 @@ export default function MagicJukeboxApp() {
 
         {activeTab === 'science' && <ClinicalEvidenceVaultView />}
       </main>
+
+      {/* Page Footer */}
+      <footer className="border-t border-wildwoods-sand bg-wildwoods-parchment/70 py-6 px-4 text-center text-xs sm:text-sm text-slate-600">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="font-medium text-wildwoods-slate">
+            This Magic Jukebox is being developed in partnership with{' '}
+            <strong>Studio Wildwoods</strong>.
+          </p>
+          <p className="text-xs text-slate-500">
+            Precision Music Medicine for Dementia &amp; Emotional Transformation
+          </p>
+        </div>
+      </footer>
 
       {/* Persistent Mini-Player Bar when navigating other tabs */}
       {activeTrack && activeTab !== 'jukebox' && (

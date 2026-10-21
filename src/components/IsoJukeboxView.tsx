@@ -308,14 +308,14 @@ export default function IsoJukeboxView({
 
       {/* The Emotional Compass: Where We Are -> Where We Want To Be */}
       <section
-        aria-label="The Studio Wildwoods Emotional Compass"
+        aria-label="The Emotional Compass"
         className="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-wildwoods-sand"
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-wildwoods-parchment">
           <div>
             <div className="inline-flex items-center gap-2 text-wildwoods-sage font-bold text-xs uppercase tracking-widest mb-1">
               <Compass className="w-4 h-4" />
-              Pillar 2 • The Studio Wildwoods Emotional Compass (NCT04236557 Protocol)
+              Pillar 2 • The Emotional Compass (NCT04236557 Protocol)
             </div>
             <h2 className="text-2xl font-serif font-bold text-wildwoods-slate">
               Dynamic Emotional Transformation Sequencer

@@ -40,7 +40,7 @@ export default function LandingHomeView({
         <div className="max-w-3xl space-y-5">
           <div className="inline-flex flex-wrap items-center gap-2 px-3.5 py-1.5 rounded-full bg-wildwoods-forest border border-wildwoods-amber/50 text-wildwoods-gold text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            Open Family &amp; Clinical Pilot • In Partnership with Studio Wildwoods
+            Open Family &amp; Clinical Pilot • Free in Your Browser
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight text-wildwoods-cream leading-tight">
@@ -155,7 +155,7 @@ export default function LandingHomeView({
             <Compass className="w-6 h-6 text-wildwoods-sage" />
           </div>
           <div className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-sage">
-            Step 2 • The Studio Wildwoods Iso-Principle
+            Step 2 • The Clinical Iso-Principle
           </div>
           <h3 className="text-lg font-serif font-bold text-wildwoods-slate">
             Match Mood, Then Guide to Calm

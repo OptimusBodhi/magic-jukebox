@@ -194,7 +194,7 @@ export default function GuidedOnboardingView({
               </strong>{' '}
               and the{' '}
               <strong className="text-wildwoods-gold">
-                Studio Wildwoods Iso-Principle
+                Clinical Iso-Principle
               </strong>
               , each question targets a specific neural hub and phase of the 30-minute therapeutic
               arc.

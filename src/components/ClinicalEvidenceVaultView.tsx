@@ -216,7 +216,7 @@ export default function ClinicalEvidenceVaultView() {
             Validates our clinical partner’s critique of the UK landscape by contrasting{' '}
             <strong>Playlist for Life</strong>, <strong>BBC Music Memories</strong>,{' '}
             <strong>m4d Radio</strong>, <strong>Vera</strong>, and <strong>MediMusic</strong>{' '}
-            against the Studio Wildwoods Magic Jukebox architecture.
+            against the Magic Jukebox architecture.
           </p>
         </div>
 
@@ -249,7 +249,7 @@ export default function ClinicalEvidenceVaultView() {
               <div className="lg:col-span-4 bg-wildwoods-slate text-wildwoods-cream p-4 rounded-xl border border-wildwoods-moss space-y-1">
                 <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Studio Wildwoods Magic Jukebox Resolution
+                  Magic Jukebox Resolution
                 </div>
                 <p className="text-xs text-wildwoods-mint leading-relaxed">
                   {comp.magicJukeboxResolution}

@@ -197,7 +197,7 @@ export default function ClinicalTelemetryView({
                   patient: patient.name,
                   birthYear: patient.birthYear,
                   reminiscenceBump: `${patient.birthYear + 10}-${patient.birthYear + 30}`,
-                  protocol: 'Studio Wildwoods Iso-Principle + Gerdner IMIA (NCT04236557)',
+                  protocol: 'Clinical Iso-Principle + Gerdner IMIA (NCT04236557)',
                   sessionsLogged: logs.length,
                   meanPreBars: Number(avgPreBars),
                   meanPostBars: Number(avgPostBars),
