@@ -700,6 +700,18 @@ export default function MagicJukeboxApp() {
             onCopyShareLink={handleCopyShareLink}
             onCopyCaregiverSheet={handleCopyCaregiverSheet}
             onQuickMoodLog={(newLog) => setBarsLogs((prev) => [...prev, newLog])}
+            onAddTrackToLibrary={(newTrack) => {
+              setLibrary((prev) => [
+                newTrack,
+                ...prev.filter((t) => t.id !== newTrack.id),
+              ]);
+              setActiveTrackId(newTrack.id);
+            }}
+            onUpdateTrackInLibrary={(trackId, updates) => {
+              setLibrary((prev) =>
+                prev.map((t) => (t.id === trackId ? { ...t, ...updates } : t))
+              );
+            }}
           />
         )}
 

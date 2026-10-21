@@ -26,7 +26,7 @@
 3. **Simple Personal Jukebox + Expandable Clinical Sequencer (`src/components/IsoJukeboxView.tsx`)**
    - **Default Everyday Interface**:
      - **1-Tap `1. Mood Before Music → 2. Mood After Listening` Bar**: Uses friendly, plain-English buttons (`😟 Restless or Pacing`, `😰 Worried or Tense`, `😔 Quiet or Low Energy`, `🤝 Ready to Visit or Care` $\rightarrow$ `😌 Calm & Peaceful`, `😊 Smiling & Present`, `🗣️ Singing / Chatting`, `😐 Still Restless`) to automatically tune the playlist and log the outcome in one tap.
-     - **Tactile Vinyl Player & Clean Song Queue**: Switch between **Relax & Listen** and **Sing-Along & Family Story**, block disliked songs with **Skip & Never Play Again**, or lock into **Simple Full-Screen View**.
+     - **Tactile Vinyl Player & Living Playlist Queue**: Switch between **Relax & Listen** and **Sing-Along & Family Story**, click **`+ Add Song / Memory`** right at the top of the playlist queue to search and add new songs with a plain-English vibe (`🎵 Upbeat`, `🎶 Medium`, `🌙 Peaceful`), click **`✏️ Edit / Add Memory`** on any playing track or playlist row to capture a new family story on the spot, or block disliked songs with **Skip & Never Play Again**.
      - **1-Click Full-Length Song Launchers**: Open any track in **Spotify**, **Apple Music**, or **YouTube** for full-length playback.
      - **1-Click Shareable Family Link (`?share=...`)**: Encodes the custom profile, songs, *Memory Mirror* stories, and *Red Flag* exclusions into a self-contained URL so siblings, caregivers, or nurses can open the exact same Jukebox on any device without accounts or passwords.
    - **Collapsible Power-User & Clinical Drawer (`Expand Sequencer & Clinical Details`)**:

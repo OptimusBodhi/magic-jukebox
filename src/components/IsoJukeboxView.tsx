@@ -30,6 +30,11 @@ import {
   ChevronUp,
   Sliders,
   Smile,
+  Plus,
+  Search,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 import {
   CURRENT_EMOTIONAL_STATES,
@@ -40,8 +45,11 @@ import {
   SequencedTrack,
   PatientProfile,
   BarsSessionLog,
+  BiographicalTrack,
+  getTrackEpochLabel,
 } from '@/lib/iso-sequencer';
 import { getFullSongStreamingLinks } from '@/lib/share-and-export';
+import { ItunesCandidateTrack, searchItunesTracks } from '@/lib/itunes-audio';
 
 interface IsoJukeboxViewProps {
   patient: PatientProfile;
@@ -72,6 +80,11 @@ interface IsoJukeboxViewProps {
   onCopyShareLink?: () => void;
   onCopyCaregiverSheet?: () => void;
   onQuickMoodLog?: (log: BarsSessionLog) => void;
+  onAddTrackToLibrary?: (track: BiographicalTrack) => void;
+  onUpdateTrackInLibrary?: (
+    trackId: string,
+    updates: Partial<Pick<BiographicalTrack, 'memoryNote' | 'duetPrompt' | 'bpm' | 'energy'>>
+  ) => void;
 }
 
 const SIMPLE_MOOD_BEFORE: Array<{
@@ -182,6 +195,8 @@ export default function IsoJukeboxView({
   onCopyShareLink,
   onCopyCaregiverSheet,
   onQuickMoodLog,
+  onAddTrackToLibrary,
+  onUpdateTrackInLibrary,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
@@ -189,7 +204,102 @@ export default function IsoJukeboxView({
   const [moodLoggedToast, setMoodLoggedToast] = useState<string | null>(null);
   const [quarantineToast, setQuarantineToast] = useState<string | null>(null);
 
+  // Living Playlist: Inline Quick-Add Song & Memory state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickSearchQuery, setQuickSearchQuery] = useState('');
+  const [quickSearchResults, setQuickSearchResults] = useState<ItunesCandidateTrack[]>([]);
+  const [isQuickSearching, setIsQuickSearching] = useState(false);
+  const [quickMemoryDraft, setQuickMemoryDraft] = useState('');
+  const [quickVibe, setQuickVibe] = useState<'upbeat' | 'warm' | 'peaceful'>('warm');
+
+  // Living Playlist: Inline Edit Memory state for active song
+  const [isEditingMemory, setIsEditingMemory] = useState(false);
+  const [editMemoryText, setEditMemoryText] = useState('');
+  const [editPromptText, setEditPromptText] = useState('');
+  const [editVibe, setEditVibe] = useState<'upbeat' | 'warm' | 'peaceful'>('warm');
+
   const currentTrack = activeTrack || trajectory.orderedTracks[0] || null;
+
+  const openMemoryEditor = (track: SequencedTrack) => {
+    setEditMemoryText(track.memoryNote);
+    setEditPromptText(track.duetPrompt);
+    setEditVibe(track.bpm >= 108 ? 'upbeat' : track.bpm >= 80 ? 'warm' : 'peaceful');
+    setIsEditingMemory(true);
+  };
+
+  const handleSaveMemoryEdit = () => {
+    if (!currentTrack || !onUpdateTrackInLibrary) {
+      setIsEditingMemory(false);
+      return;
+    }
+    const newBpm =
+      editVibe === 'upbeat'
+        ? Math.max(112, currentTrack.bpm)
+        : editVibe === 'peaceful'
+        ? Math.min(68, currentTrack.bpm)
+        : 88;
+    const newEnergy = editVibe === 'upbeat' ? 8 : editVibe === 'peaceful' ? 2 : 5;
+
+    onUpdateTrackInLibrary(currentTrack.id, {
+      memoryNote: editMemoryText.trim() || currentTrack.memoryNote,
+      duetPrompt: editPromptText.trim() || currentTrack.duetPrompt,
+      bpm: newBpm,
+      energy: newEnergy,
+    });
+    setIsEditingMemory(false);
+    setMoodLoggedToast(`✓ Saved memory & notes for "${currentTrack.title}"!`);
+    setTimeout(() => setMoodLoggedToast(null), 4000);
+  };
+
+  const handleQuickSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickSearchQuery.trim()) return;
+    setIsQuickSearching(true);
+    const results = await searchItunesTracks(quickSearchQuery, 6);
+    setQuickSearchResults(results);
+    setIsQuickSearching(false);
+  };
+
+  const handleQuickAddTrack = (cand: ItunesCandidateTrack) => {
+    if (!onAddTrackToLibrary) return;
+    const bpm =
+      quickVibe === 'upbeat' ? 116 : quickVibe === 'peaceful' ? 66 : cand.inferredBpm || 88;
+    const energy = quickVibe === 'upbeat' ? 8 : quickVibe === 'peaceful' ? 2 : 5;
+
+    const newTrack: BiographicalTrack = {
+      id: cand.trackId,
+      title: cand.title,
+      artist: cand.artist,
+      year: cand.year,
+      bpm,
+      mode: 'Major',
+      energy,
+      valence: 9,
+      neuroTargets: cand.neuroTargets,
+      memoryNote:
+        quickMemoryDraft.trim() ||
+        `Added to ${patient.preferredName}’s living Jukebox (${getTrackEpochLabel(
+          cand.year,
+          patient.birthYear
+        )}).`,
+      duetPrompt: `Ask ${patient.preferredName} what memories or stories come to mind when ${cand.artist} sings "${cand.title}".`,
+      chorusLyrics: [
+        `${cand.title} — ${cand.artist} (${cand.year})`,
+        'Sing or hum along together with the chorus hook.',
+      ],
+      itunesQuery: `${cand.artist} ${cand.title}`,
+      previewUrl: cand.previewUrl,
+      artworkUrl: cand.artworkUrl,
+      epochLabel: getTrackEpochLabel(cand.year, patient.birthYear),
+    };
+
+    onAddTrackToLibrary(newTrack);
+    setQuickMemoryDraft('');
+    setMoodLoggedToast(
+      `✨ Added "${cand.title}" by ${cand.artist} to ${patient.preferredName}’s Jukebox!`
+    );
+    setTimeout(() => setMoodLoggedToast(null), 5000);
+  };
 
   const handleRedFlag = (track: SequencedTrack) => {
     onQuarantineTrack(
@@ -629,12 +739,92 @@ export default function IsoJukeboxView({
                   </h3>
                   <p className="text-lg text-wildwoods-mint font-medium">{currentTrack.artist}</p>
 
-                  {/* Family Memory Story always visible in simple friendly format */}
-                  <div className="p-3.5 rounded-2xl bg-wildwoods-forest/90 border border-wildwoods-moss text-left text-xs sm:text-sm text-wildwoods-cream leading-relaxed">
-                    <span className="text-wildwoods-gold font-bold block text-xs uppercase tracking-wider mb-0.5">
-                      Why {patient.preferredName} Loves This Song:
-                    </span>
-                    {currentTrack.memoryNote}
+                  {/* Family Memory Story with 1-Click Inline Edit / Add Memory */}
+                  <div className="p-3.5 rounded-2xl bg-wildwoods-forest/90 border border-wildwoods-moss text-left text-xs sm:text-sm text-wildwoods-cream leading-relaxed space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-wildwoods-gold font-bold text-xs uppercase tracking-wider">
+                        Family Memory &amp; Note for This Song:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isEditingMemory ? setIsEditingMemory(false) : openMemoryEditor(currentTrack)
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-wildwoods-slate hover:bg-wildwoods-moss text-wildwoods-mint hover:text-white text-xs font-bold inline-flex items-center gap-1 transition"
+                      >
+                        <Pencil className="w-3 h-3 text-wildwoods-gold" />
+                        {isEditingMemory ? 'Cancel' : 'Edit / Add Memory'}
+                      </button>
+                    </div>
+
+                    {isEditingMemory ? (
+                      <div className="space-y-2.5 pt-1">
+                        <div>
+                          <label className="block text-[11px] font-bold text-wildwoods-mint mb-1">
+                            Why {patient.preferredName} loves this song (or memory it sparked):
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={editMemoryText}
+                            onChange={(e) => setEditMemoryText(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-wildwoods-slate border border-wildwoods-amber text-wildwoods-cream text-xs"
+                            placeholder={`e.g., "${patient.preferredName} smiled and remembered dancing to this in 1962..."`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-wildwoods-mint mb-1">
+                            Conversation Starter (What to ask {patient.preferredName}):
+                          </label>
+                          <input
+                            type="text"
+                            value={editPromptText}
+                            onChange={(e) => setEditPromptText(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-wildwoods-slate border border-wildwoods-moss text-wildwoods-cream text-xs"
+                            placeholder={`e.g., "Ask ${patient.preferredName} about his first car..."`}
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-wildwoods-mint font-semibold">
+                              Song Vibe:
+                            </span>
+                            {(
+                              [
+                                { id: 'upbeat', label: '🎵 Upbeat' },
+                                { id: 'warm', label: '🎶 Medium' },
+                                { id: 'peaceful', label: '🌙 Peaceful' },
+                              ] as const
+                            ).map((v) => (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => setEditVibe(v.id)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                                  editVibe === v.id
+                                    ? 'bg-wildwoods-amber text-wildwoods-slate border-wildwoods-amber'
+                                    : 'bg-wildwoods-slate text-wildwoods-mint border-wildwoods-moss'
+                                }`}
+                              >
+                                {v.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleSaveMemoryEdit}
+                            className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs inline-flex items-center gap-1 shadow"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Save Memory
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p>{currentTrack.memoryNote}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -771,84 +961,226 @@ export default function IsoJukeboxView({
           )}
         </section>
 
-        {/* Right 5 Columns: Simple, Friendly Playlist Queue */}
+        {/* Right 5 Columns: Living Playlist Queue + Inline "+ Add a Song or Memory" */}
         <section
           aria-label="Up Next Playlist Queue"
           className="lg:col-span-5 bg-white rounded-3xl p-6 shadow-md border border-wildwoods-sand space-y-4"
         >
-          <div className="flex items-center justify-between border-b border-wildwoods-parchment pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-wildwoods-parchment pb-3">
             <div>
               <h2 className="text-xl font-serif font-bold text-wildwoods-slate">
                 {patient.preferredName}’s Playlist ({trajectory.orderedTracks.length} Songs)
               </h2>
               <p className="text-xs text-slate-500">
-                Ordered automatically from current mood toward calm
+                A living playlist — add new songs or family memories anytime
               </p>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-wildwoods-parchment text-wildwoods-slate text-xs font-bold">
-              ~30 Mins
-            </span>
+
+            <button
+              type="button"
+              onClick={() => setShowQuickAdd((prev) => !prev)}
+              className={`min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition ${
+                showQuickAdd
+                  ? 'bg-wildwoods-slate text-wildwoods-cream'
+                  : 'bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate'
+              }`}
+            >
+              {showQuickAdd ? (
+                <>
+                  <X className="w-4 h-4" />
+                  Close Add Song
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Add Song / Memory
+                </>
+              )}
+            </button>
           </div>
 
-          <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+          {/* Inline Quick-Add Song & Memory Drawer right inside the simple Jukebox */}
+          {showQuickAdd && (
+            <div className="p-4 rounded-2xl bg-wildwoods-cream border-2 border-wildwoods-amber space-y-3">
+              <div className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-slate">
+                Quick-Add a Song &amp; Family Memory to {patient.preferredName}’s Jukebox
+              </div>
+
+              <form onSubmit={handleQuickSearch} className="flex gap-2">
+                <input
+                  type="text"
+                  value={quickSearchQuery}
+                  onChange={(e) => setQuickSearchQuery(e.target.value)}
+                  placeholder="Type song or artist (e.g., Patsy Cline, Moon River)..."
+                  className="flex-1 min-h-[42px] px-3.5 py-2 rounded-xl bg-white border border-wildwoods-sand text-xs font-medium text-wildwoods-slate"
+                />
+                <button
+                  type="submit"
+                  disabled={isQuickSearching}
+                  className="min-h-[42px] px-4 py-2 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-cream font-bold text-xs flex items-center gap-1.5 shrink-0"
+                >
+                  <Search className="w-3.5 h-3.5 text-wildwoods-gold" />
+                  {isQuickSearching ? '...' : 'Find'}
+                </button>
+              </form>
+
+              <div>
+                <input
+                  type="text"
+                  value={quickMemoryDraft}
+                  onChange={(e) => setQuickMemoryDraft(e.target.value)}
+                  placeholder={`Optional memory note (e.g., "Dad sang this on road trips")...`}
+                  className="w-full px-3.5 py-2 rounded-xl bg-white border border-wildwoods-sand text-xs text-wildwoods-slate"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-bold text-slate-600">How does this song feel?</span>
+                <div className="flex gap-1.5">
+                  {(
+                    [
+                      { id: 'upbeat', label: '🎵 Upbeat' },
+                      { id: 'warm', label: '🎶 Medium' },
+                      { id: 'peaceful', label: '🌙 Peaceful' },
+                    ] as const
+                  ).map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setQuickVibe(v.id)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border ${
+                        quickVibe === v.id
+                          ? 'bg-wildwoods-slate text-wildwoods-gold border-wildwoods-slate'
+                          : 'bg-white text-slate-600 border-wildwoods-sand'
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {quickSearchResults.length > 0 && (
+                <div className="space-y-1.5 max-h-[210px] overflow-y-auto pt-1">
+                  {quickSearchResults.map((cand) => (
+                    <div
+                      key={cand.trackId}
+                      className="p-2.5 rounded-xl bg-white border border-wildwoods-sand flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-wildwoods-slate truncate">
+                          {cand.title}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          {cand.artist} ({cand.year})
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAddTrack(cand)}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
             {trajectory.orderedTracks.map((track, idx) => {
               const isTrackActive = currentTrack?.id === track.id;
               return (
                 <div
                   key={track.id}
                   onClick={() => onTogglePlay(track)}
-                  className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between gap-3 ${
+                  className={`p-3 rounded-2xl border cursor-pointer transition space-y-1.5 ${
                     isTrackActive
                       ? 'bg-wildwoods-slate text-wildwoods-cream border-wildwoods-amber shadow-md'
                       : 'bg-wildwoods-cream hover:bg-wildwoods-parchment text-wildwoods-slate border-wildwoods-sand'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTogglePlay(track);
-                      }}
-                      aria-label={`Play ${track.title}`}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold ${
-                        isTrackActive && isPlaying
-                          ? 'bg-wildwoods-amber text-wildwoods-slate'
-                          : 'bg-wildwoods-forest text-wildwoods-cream'
-                      }`}
-                    >
-                      {isTrackActive && isPlaying ? (
-                        <Pause className="w-4 h-4" />
-                      ) : (
-                        <Play className="w-4 h-4" />
-                      )}
-                    </button>
-
-                    <div className="min-w-0">
-                      <div className="font-bold text-sm truncate">
-                        {idx + 1}. {track.title}
-                      </div>
-                      <div
-                        className={`text-xs truncate ${
-                          isTrackActive ? 'text-wildwoods-mint' : 'text-slate-600'
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePlay(track);
+                        }}
+                        aria-label={`Play ${track.title}`}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold ${
+                          isTrackActive && isPlaying
+                            ? 'bg-wildwoods-amber text-wildwoods-slate'
+                            : 'bg-wildwoods-forest text-wildwoods-cream'
                         }`}
                       >
-                        {track.artist} ({track.year})
+                        {isTrackActive && isPlaying ? (
+                          <Pause className="w-4 h-4" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm truncate">
+                          {idx + 1}. {track.title}
+                        </div>
+                        <div
+                          className={`text-xs truncate ${
+                            isTrackActive ? 'text-wildwoods-mint' : 'text-slate-600'
+                          }`}
+                        >
+                          {track.artist} ({track.year})
+                        </div>
                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePlay(track);
+                          openMemoryEditor(track);
+                        }}
+                        title="Edit or add a family memory for this song"
+                        className={`px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 ${
+                          isTrackActive
+                            ? 'bg-wildwoods-forest text-wildwoods-gold hover:bg-wildwoods-moss'
+                            : 'bg-white text-slate-600 hover:bg-wildwoods-sand border border-wildwoods-sand'
+                        }`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Memory
+                      </button>
+                      <span
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg ${
+                          track.phase === 1
+                            ? 'bg-amber-100 text-amber-900'
+                            : track.phase === 2
+                            ? 'bg-teal-100 text-teal-900'
+                            : 'bg-emerald-100 text-emerald-900'
+                        }`}
+                      >
+                        {track.phase === 1 ? 'Match' : track.phase === 2 ? 'Bridge' : 'Calm'}
+                      </span>
                     </div>
                   </div>
 
-                  <span
-                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg shrink-0 ${
-                      track.phase === 1
-                        ? 'bg-amber-100 text-amber-900'
-                        : track.phase === 2
-                        ? 'bg-teal-100 text-teal-900'
-                        : 'bg-emerald-100 text-emerald-900'
-                    }`}
-                  >
-                    {track.phase === 1 ? 'Match' : track.phase === 2 ? 'Bridge' : 'Calm'}
-                  </span>
+                  {/* Preview of the saved family memory note right under the song title */}
+                  {track.memoryNote && (
+                    <p
+                      className={`text-[11px] line-clamp-1 pl-13 ${
+                        isTrackActive ? 'text-wildwoods-mint/90' : 'text-slate-500'
+                      }`}
+                    >
+                      💬 {track.memoryNote}
+                    </p>
+                  )}
                 </div>
               );
             })}
