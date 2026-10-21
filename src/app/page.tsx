@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Wand2,
   CheckCircle2,
+  Home,
 } from 'lucide-react';
 import {
   ARTHUR_SEED_TRACKS,
@@ -35,14 +36,17 @@ import MusicDetectiveView from '@/components/MusicDetectiveView';
 import ClinicalTelemetryView from '@/components/ClinicalTelemetryView';
 import ClinicalEvidenceVaultView from '@/components/ClinicalEvidenceVaultView';
 import GuidedOnboardingView from '@/components/GuidedOnboardingView';
+import LandingHomeView from '@/components/LandingHomeView';
 
-type ActiveTab = 'jukebox' | 'interview' | 'detective' | 'telemetry' | 'science';
+type ActiveTab = 'home' | 'jukebox' | 'interview' | 'detective' | 'telemetry' | 'science';
 
 const STORAGE_KEY = 'magic_jukebox_wildwoods_state_v1';
 
 export default function MagicJukeboxApp() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('jukebox');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [patient, setPatient] = useState<PatientProfile>(DEFAULT_PATIENT_PROFILE);
+  const [isCustomProfile, setIsCustomProfile] = useState<boolean>(false);
+  const [interviewStartBlank, setInterviewStartBlank] = useState<boolean>(false);
   const [library, setLibrary] = useState<BiographicalTrack[]>(ARTHUR_SEED_TRACKS);
   const [quarantinedList, setQuarantinedList] = useState(INITIAL_QUARANTINED_TRACKS);
   const [barsLogs, setBarsLogs] = useState<BarsSessionLog[]>(INITIAL_BARS_LOGS);
@@ -83,6 +87,9 @@ export default function MagicJukeboxApp() {
       if (savedRaw) {
         const parsed = JSON.parse(savedRaw);
         if (parsed.patient) setPatient(parsed.patient);
+        if (typeof parsed.isCustomProfile === 'boolean') {
+          setIsCustomProfile(parsed.isCustomProfile);
+        }
         if (Array.isArray(parsed.library) && parsed.library.length > 0) {
           initialTracks = parsed.library;
           setLibrary(parsed.library);
@@ -107,6 +114,7 @@ export default function MagicJukeboxApp() {
         STORAGE_KEY,
         JSON.stringify({
           patient,
+          isCustomProfile,
           library,
           quarantinedList,
           barsLogs,
@@ -115,7 +123,7 @@ export default function MagicJukeboxApp() {
     } catch {
       // Ignore storage quota errors
     }
-  }, [patient, library, quarantinedList, barsLogs]);
+  }, [patient, isCustomProfile, library, quarantinedList, barsLogs]);
 
   // Compute the 3-Phase Iso-Principle Trajectory whenever library, compass, or quarantine changes
   const trajectory = useMemo(() => {
@@ -381,6 +389,7 @@ export default function MagicJukeboxApp() {
     stopAllAudio();
     localStorage.removeItem(STORAGE_KEY);
     setPatient(DEFAULT_PATIENT_PROFILE);
+    setIsCustomProfile(false);
     setQuarantinedList(INITIAL_QUARANTINED_TRACKS);
     setBarsLogs(INITIAL_BARS_LOGS);
     setCurrentStateId('agitated_sundowning');
@@ -414,8 +423,12 @@ export default function MagicJukeboxApp() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {/* Brand Logo & Studio Wildwoods Partnership Badge */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow-md font-serif font-extrabold text-xl">
+            <button
+              type="button"
+              onClick={() => setActiveTab('home')}
+              className="flex items-center gap-3.5 text-left group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow-md font-serif font-extrabold text-xl group-hover:bg-wildwoods-gold transition">
                 <Disc3 className="w-7 h-7" />
               </div>
               <div>
@@ -425,14 +438,14 @@ export default function MagicJukeboxApp() {
                   </span>
                   <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-wildwoods-moss text-wildwoods-gold text-[11px] font-bold uppercase tracking-wider">
                     <Sparkles className="w-3 h-3" />
-                    Studio Wildwoods Partnership
+                    Studio Wildwoods Pilot
                   </span>
                 </div>
                 <p className="text-xs text-wildwoods-mint">
                   Precision Music Medicine for Dementia &amp; Emotional Transformation
                 </p>
               </div>
-            </div>
+            </button>
 
             <button
               type="button"
@@ -441,78 +454,94 @@ export default function MagicJukeboxApp() {
               className="lg:hidden px-3 py-2 rounded-xl bg-wildwoods-forest text-wildwoods-mint text-xs font-semibold flex items-center gap-1"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Reset
+              Reset Demo
             </button>
           </div>
 
-          {/* 4 Core Interconnected Navigation Tabs */}
+          {/* Primary Navigation Bar */}
           <nav
             aria-label="Primary Navigation"
-            className="flex flex-wrap items-center gap-2"
+            className="flex flex-wrap items-center gap-1.5"
           >
             <button
               type="button"
+              onClick={() => setActiveTab('home')}
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition ${
+                activeTab === 'home'
+                  ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
+                  : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              Start Here
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setInterviewStartBlank(true);
+                setActiveTab('interview');
+              }}
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition ${
+                activeTab === 'interview'
+                  ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
+                  : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-amber/50'
+              }`}
+            >
+              <Wand2 className="w-4 h-4 text-wildwoods-gold" />
+              Create Your Own
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('jukebox')}
-              className={`min-h-[48px] px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition ${
                 activeTab === 'jukebox'
                   ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
                   : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream'
               }`}
             >
               <Disc3 className="w-4 h-4" />
-              1. Iso-Jukebox Player
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('interview')}
-              className={`min-h-[48px] px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition ${
-                activeTab === 'interview'
-                  ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
-                  : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-amber/40'
-              }`}
-            >
-              <Wand2 className="w-4 h-4 text-wildwoods-gold" />
-              2. Guided Intake Interview
+              {isCustomProfile ? `${patient.preferredName}’s Jukebox` : 'Demo Jukebox'}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('detective')}
-              className={`min-h-[48px] px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition ${
                 activeTab === 'detective'
                   ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
                   : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream'
               }`}
             >
               <Search className="w-4 h-4" />
-              3. Music Detective Studio
+              Song Finder
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('telemetry')}
-              className={`min-h-[48px] px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition ${
                 activeTab === 'telemetry'
                   ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
                   : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream'
               }`}
             >
               <Activity className="w-4 h-4" />
-              4. Clinical Telemetry &amp; Shield
+              Care Log
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('science')}
-              className={`min-h-[48px] px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition ${
                 activeTab === 'science'
                   ? 'bg-wildwoods-amber text-wildwoods-slate shadow-md'
                   : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream'
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              5. Clinical Science Vault
+              Clinical Science
             </button>
 
             <button
@@ -551,9 +580,26 @@ export default function MagicJukeboxApp() {
           </div>
         )}
 
+        {activeTab === 'home' && (
+          <LandingHomeView
+            patient={patient}
+            isCustomProfile={isCustomProfile}
+            onStartCreateOwn={() => {
+              setInterviewStartBlank(true);
+              setActiveTab('interview');
+            }}
+            onExploreDemo={() => setActiveTab('jukebox')}
+            onNavigateTab={(t) => {
+              if (t === 'interview') setInterviewStartBlank(false);
+              setActiveTab(t);
+            }}
+          />
+        )}
+
         {activeTab === 'jukebox' && (
           <IsoJukeboxView
             patient={patient}
+            isCustomProfile={isCustomProfile}
             currentStateId={currentStateId}
             targetStateId={targetStateId}
             onSelectCurrentState={setCurrentStateId}
@@ -576,21 +622,27 @@ export default function MagicJukeboxApp() {
             gerdnerTimerRemainingSec={gerdnerTimerRemainingSec}
             isGerdnerTimerRunning={isGerdnerTimerRunning}
             onToggleGerdnerTimer={() => setIsGerdnerTimerRunning((prev) => !prev)}
-            onOpenGuidedInterview={() => setActiveTab('interview')}
+            onOpenGuidedInterview={() => {
+              setInterviewStartBlank(!isCustomProfile);
+              setActiveTab('interview');
+            }}
           />
         )}
 
         {activeTab === 'interview' && (
           <GuidedOnboardingView
+            startBlank={interviewStartBlank}
             onCompleteInterview={({
               profile: newProfile,
               tracks: synthesizedTracks,
               quarantinedEntry,
               initialCurrentState,
               initialTargetState,
+              isCustom,
             }) => {
               stopAllAudio();
               setPatient(newProfile);
+              setIsCustomProfile(isCustom);
               if (synthesizedTracks.length >= 6) {
                 setLibrary(synthesizedTracks);
               } else {
@@ -604,9 +656,9 @@ export default function MagicJukeboxApp() {
               setActiveTrackId(null);
               setActiveTab('jukebox');
               setInterviewCompleteBanner(
-                `✨ Guided Intake Interview Complete! Generated ${newProfile.name}’s personalized 3-Phase Iso-Principle Jukebox (${
+                `✨ Custom Jukebox Created! Generated ${newProfile.name}’s personalized 3-Phase Iso-Principle Jukebox (${
                   newProfile.birthYear + 10
-                }–${newProfile.birthYear + 30} Reminiscence Bump) with verified iTunes audio streams.`
+                }–${newProfile.birthYear + 30} Reminiscence Bump) with verified audio streams.`
               );
               setTimeout(() => setInterviewCompleteBanner(null), 9000);
             }}

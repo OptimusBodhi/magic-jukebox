@@ -58,6 +58,7 @@ interface IsoJukeboxViewProps {
   isGerdnerTimerRunning: boolean;
   onToggleGerdnerTimer: () => void;
   onOpenGuidedInterview?: () => void;
+  isCustomProfile?: boolean;
 }
 
 export default function IsoJukeboxView({
@@ -85,6 +86,7 @@ export default function IsoJukeboxView({
   isGerdnerTimerRunning,
   onToggleGerdnerTimer,
   onOpenGuidedInterview,
+  isCustomProfile = false,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [quarantineToast, setQuarantineToast] = useState<string | null>(null);
@@ -238,9 +240,15 @@ export default function IsoJukeboxView({
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="px-3 py-1 rounded-full bg-wildwoods-amber/20 border border-wildwoods-amber/60 text-wildwoods-gold text-xs font-bold uppercase tracking-wider">
-                Active Patient Profile
-              </span>
+              {isCustomProfile ? (
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-200 text-xs font-extrabold uppercase tracking-wider">
+                  ✓ Custom Family Jukebox Profile
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-full bg-wildwoods-amber/25 border border-wildwoods-amber text-wildwoods-gold text-xs font-extrabold uppercase tracking-wider">
+                  Sample Demo Patient • Pre-Loaded Example
+                </span>
+              )}
               <span className="px-3 py-1 rounded-full bg-wildwoods-moss text-wildwoods-mint text-xs font-semibold">
                 Born {patient.birthYear} (Age {2026 - patient.birthYear})
               </span>
@@ -252,6 +260,11 @@ export default function IsoJukeboxView({
               {patient.name} — Precision Iso-Principle Jukebox
             </h1>
             <p className="text-wildwoods-mint text-sm md:text-base max-w-3xl">
+              {!isCustomProfile && (
+                <strong className="text-wildwoods-gold mr-1.5">
+                  [Interactive Demo Mode]
+                </strong>
+              )}
               {patient.hometown} • {patient.formerOccupation} • Preferred Palette:{' '}
               <span className="text-wildwoods-cream font-medium">{patient.musicalHeritage}</span>
             </p>
@@ -265,7 +278,9 @@ export default function IsoJukeboxView({
                 className="min-h-[52px] px-5 py-3 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition"
               >
                 <Sparkles className="w-4 h-4" />
-                Guided Intake Interview (New / Edit Profile)
+                {isCustomProfile
+                  ? 'Edit Profile / Re-Run Interview'
+                  : 'Create Your Own Jukebox (2-Min Setup)'}
               </button>
             )}
             <div className="bg-wildwoods-forest px-4 py-3 rounded-2xl border border-wildwoods-moss text-left">

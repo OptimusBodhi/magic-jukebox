@@ -35,6 +35,7 @@ import {
 } from '@/lib/iso-sequencer';
 
 interface GuidedOnboardingViewProps {
+  startBlank?: boolean;
   onCompleteInterview: (payload: {
     profile: PatientProfile;
     tracks: BiographicalTrack[];
@@ -48,6 +49,7 @@ interface GuidedOnboardingViewProps {
     } | null;
     initialCurrentState: CurrentEmotionalStateId;
     initialTargetState: TargetTherapeuticStateId;
+    isCustom: boolean;
   }) => void;
 }
 
@@ -90,17 +92,52 @@ const INTERVIEW_STEPS = [
   },
 ];
 
+const BLANK_FAMILY_ANSWERS: GuidedInterviewAnswers = {
+  fullName: '',
+  preferredName: '',
+  birthYear: 1945,
+  hometown: '',
+  formerOccupation: '',
+  culturalUpbringing: '',
+  youthStyles: ['rock_n_roll_jukebox'],
+  youthFavoriteArtistOrSong: '',
+  youthDanceMemory: '',
+  spouseOrCompanionName: '',
+  courtshipSongOrArtist: '',
+  courtshipMemoryStory: '',
+  vocalPreference: 'solo_crooners',
+  sanctuaryStyles: ['velvet_crooner_ballads'],
+  sanctuarySpecificSong: '',
+  sanctuaryMemoryPrompt: '',
+  redFlagSongsOrArtists: '',
+  redFlagReason: '',
+  acousticSensitivities: [],
+  primaryVulnerabilityWindow: 'sundowning_afternoon',
+  sundowningPeakTime: '16:30',
+  initialCurrentState: 'agitated_sundowning',
+  initialTargetState: 'deep_calm',
+};
+
 export default function GuidedOnboardingView({
+  startBlank = false,
   onCompleteInterview,
 }: GuidedOnboardingViewProps) {
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [activePersonaId, setActivePersonaId] = useState<string>('eleanor-1938');
+  const [activePersonaId, setActivePersonaId] = useState<string>(
+    startBlank ? 'custom-blank' : 'eleanor-1938'
+  );
   const [answers, setAnswers] = useState<GuidedInterviewAnswers>(
-    SAMPLE_INTERVIEW_PERSONAS[0].answers
+    startBlank ? BLANK_FAMILY_ANSWERS : SAMPLE_INTERVIEW_PERSONAS[0].answers
   );
   const [isSynthesizing, setIsSynthesizing] = useState<boolean>(false);
 
   const bump = calculateReminiscenceBump(answers.birthYear);
+
+  const handleStartBlankCustom = () => {
+    setActivePersonaId('custom-blank');
+    setAnswers({ ...BLANK_FAMILY_ANSWERS });
+    setCurrentStep(1);
+  };
 
   const handleLoadPersona = (personaId: string) => {
     const found = SAMPLE_INTERVIEW_PERSONAS.find((p) => p.id === personaId);
@@ -117,11 +154,20 @@ export default function GuidedOnboardingView({
   const handleBuildPersonalizedJukebox = async () => {
     setIsSynthesizing(true);
     try {
-      const result = await synthesizeInterviewIntoJukebox(answers);
+      const effectiveAnswers: GuidedInterviewAnswers = {
+        ...answers,
+        fullName: answers.fullName.trim() || 'My Loved One',
+        preferredName:
+          answers.preferredName.trim() ||
+          answers.fullName.trim().split(' ')[0] ||
+          'My Loved One',
+      };
+      const result = await synthesizeInterviewIntoJukebox(effectiveAnswers);
       onCompleteInterview({
         ...result,
-        initialCurrentState: answers.initialCurrentState,
-        initialTargetState: answers.initialTargetState,
+        initialCurrentState: effectiveAnswers.initialCurrentState,
+        initialTargetState: effectiveAnswers.initialTargetState,
+        isCustom: true,
       });
     } finally {
       setIsSynthesizing(false);
@@ -168,13 +214,44 @@ export default function GuidedOnboardingView({
           </button>
         </div>
 
-        {/* Quick-Load Sample Personas for Live Clinical Demonstrations */}
+        {/* Clear Toggle: Blank Form for Your Own Loved One vs. Pre-Filled Demo Personas */}
         <div className="pt-4 border-t border-wildwoods-moss space-y-2.5">
-          <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-gold flex items-center gap-2">
-            <UserCheck className="w-4 h-4" />
-            Quick-Load Sample Patient Biographies (Or Customize Any Answer Below):
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-gold flex items-center gap-2">
+              <UserCheck className="w-4 h-4" />
+              Choose How to Start: Blank Form for Your Loved One — or Test with a Sample Demo Persona
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <button
+              type="button"
+              onClick={handleStartBlankCustom}
+              className={`text-left p-4 rounded-2xl border-2 transition ${
+                activePersonaId === 'custom-blank'
+                  ? 'bg-wildwoods-amber text-wildwoods-slate border-white shadow-lg'
+                  : 'bg-wildwoods-forest hover:bg-wildwoods-moss border-wildwoods-amber/60 text-wildwoods-cream'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-extrabold text-sm">
+                  ✨ Start Blank (For My Loved One)
+                </span>
+                {activePersonaId === 'custom-blank' && (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                )}
+              </div>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  activePersonaId === 'custom-blank'
+                    ? 'text-wildwoods-slate/90 font-medium'
+                    : 'text-wildwoods-mint'
+                }`}
+              >
+                Clear all demo fields and enter your own family member’s birth year and favorite
+                music.
+              </p>
+            </button>
+
             {SAMPLE_INTERVIEW_PERSONAS.map((persona) => {
               const isSelected = activePersonaId === persona.id;
               return (
@@ -189,8 +266,8 @@ export default function GuidedOnboardingView({
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-sm text-wildwoods-cream">
-                      {persona.badge}
+                    <span className="font-bold text-xs text-wildwoods-cream">
+                      DEMO: {persona.badge}
                     </span>
                     {isSelected && (
                       <CheckCircle2 className="w-4 h-4 text-wildwoods-gold shrink-0" />
