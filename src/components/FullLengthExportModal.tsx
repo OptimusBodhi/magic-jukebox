@@ -152,22 +152,22 @@ export default function FullLengthExportModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="full-length-export-title"
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 sm:p-4 overflow-y-auto overflow-x-hidden"
     >
-      <div className="bg-wildwoods-cream text-wildwoods-slate rounded-3xl max-w-3xl w-full shadow-2xl border-4 border-wildwoods-amber overflow-hidden my-8">
+      <div className="bg-wildwoods-cream text-wildwoods-slate rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl border-2 sm:border-4 border-wildwoods-amber overflow-hidden my-2 sm:my-8">
         {/* Header */}
-        <div className="bg-wildwoods-slate text-wildwoods-cream px-6 py-5 flex items-center justify-between gap-4 border-b border-wildwoods-moss">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow">
-              <Disc3 className="w-6 h-6" />
+        <div className="bg-wildwoods-slate text-wildwoods-cream px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-wildwoods-moss">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow shrink-0">
+              <Disc3 className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
-                Full-Length Playlist • Sequenced for Current Mood
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-emerald-300 truncate">
+                Full-Length Playlist
               </div>
               <h2
                 id="full-length-export-title"
-                className="text-xl sm:text-2xl font-serif font-bold text-wildwoods-cream"
+                className="text-base sm:text-2xl font-serif font-bold text-wildwoods-cream leading-snug"
               >
                 Play Full-Length Songs &amp; Export to Spotify
               </h2>

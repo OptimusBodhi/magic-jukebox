@@ -587,7 +587,7 @@ export default function MagicJukeboxApp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-wildwoods-cream text-wildwoods-slate">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col bg-wildwoods-cream text-wildwoods-slate">
       {/* Hidden HTML5 Audio Elements for Main Jukebox & Music Detective */}
       <audio
         ref={audioRef}
@@ -604,8 +604,8 @@ export default function MagicJukeboxApp() {
         onEnded={() => setIsPreviewPlaying(false)}
       />
 
-      {/* Clean, Compact, Cognitive-Friendly Top Header */}
-      <header className="sticky top-0 z-40 bg-wildwoods-slate/95 backdrop-blur-md text-wildwoods-cream border-b border-wildwoods-moss shadow-md">
+      {/* Clean, Mobile-Fitted Top Header (Never Overflows Phone Width) */}
+      <header className="sticky top-0 z-40 w-full bg-wildwoods-slate/95 backdrop-blur-md text-wildwoods-cream border-b border-wildwoods-moss shadow-md">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-2">
           {/* Brand Logo */}
           <button
@@ -614,25 +614,25 @@ export default function MagicJukeboxApp() {
               setIsMoreMenuOpen(false);
               setActiveTab('home');
             }}
-            className="flex items-center gap-2.5 text-left group shrink-0"
+            className="flex items-center gap-2 text-left group min-w-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow font-serif font-extrabold group-hover:bg-wildwoods-gold transition">
-              <Disc3 className="w-6 h-6" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow font-serif font-extrabold shrink-0 group-hover:bg-wildwoods-gold transition">
+              <Disc3 className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <span className="font-serif font-bold text-base sm:text-xl tracking-tight text-wildwoods-cream block leading-tight">
+            <div className="min-w-0">
+              <span className="font-serif font-bold text-sm sm:text-xl tracking-tight text-wildwoods-cream block truncate">
                 The Magic Jukebox
               </span>
-              <span className="hidden sm:block text-[11px] text-wildwoods-mint">
+              <span className="hidden sm:block text-[11px] text-wildwoods-mint truncate">
                 Personal Music &amp; Memory Player
               </span>
             </div>
           </button>
 
-          {/* Ultra-Simple 3-Item Primary Navigation + "More" Menu */}
+          {/* 1 Primary Jukebox Button + 1 Unified "Menu" Dropdown */}
           <nav
             aria-label="Primary Navigation"
-            className="flex items-center gap-1.5 relative"
+            className="flex items-center gap-1.5 shrink-0 relative"
           >
             <button
               type="button"
@@ -647,9 +647,12 @@ export default function MagicJukeboxApp() {
               }`}
             >
               <Disc3 className="w-4 h-4 shrink-0" />
-              <span>{isCustomProfile ? `${patient.preferredName}’s Jukebox` : 'Play Jukebox'}</span>
+              <span className="max-w-[115px] sm:max-w-none truncate">
+                {isCustomProfile ? `${patient.preferredName}’s Jukebox` : 'Play Jukebox'}
+              </span>
             </button>
 
+            {/* Desktop-only quick setup button; on mobile it sits right at the top of the unified Menu */}
             <button
               type="button"
               onClick={() => {
@@ -657,7 +660,7 @@ export default function MagicJukeboxApp() {
                 setInterviewStartBlank(!isCustomProfile);
                 setActiveTab('interview');
               }}
-              className={`min-h-[42px] px-3 sm:px-4 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-1.5 transition ${
+              className={`hidden md:flex min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs sm:text-sm items-center gap-1.5 transition ${
                 activeTab === 'interview'
                   ? 'bg-wildwoods-amber text-wildwoods-slate shadow'
                   : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-amber/50'
@@ -667,87 +670,110 @@ export default function MagicJukeboxApp() {
               <span>{isCustomProfile ? 'Change Setup' : 'Build Playlist'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsMoreMenuOpen(false);
-                setIsTutorialOpen(true);
-              }}
-              title="How It Works (Quick Guide)"
-              className="min-h-[42px] px-2.5 sm:px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold font-extrabold text-xs sm:text-sm flex items-center gap-1 border border-wildwoods-amber/40 transition"
-            >
-              <HelpCircle className="w-4 h-4 shrink-0" />
-              <span className="hidden md:inline">Help</span>
-            </button>
-
-            {/* Single "More" Dropdown for Secondary & Caregiver/Clinical Tools */}
+            {/* Unified Menu Dropdown (Always fits on every mobile screen!) */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsMoreMenuOpen((prev) => !prev)}
                 aria-expanded={isMoreMenuOpen}
-                className={`min-h-[42px] px-2.5 sm:px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1 transition ${
-                  ['home', 'detective', 'telemetry', 'science'].includes(activeTab) &&
-                  activeTab !== 'home'
-                    ? 'bg-wildwoods-amber text-wildwoods-slate'
-                    : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-mint'
-                }`}
+                className="min-h-[42px] px-3 sm:px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/60 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 transition"
               >
-                <span>More</span>
-                <ChevronDown className="w-3.5 h-3.5" />
+                <span>Menu</span>
+                <ChevronDown className="w-4 h-4 shrink-0" />
               </button>
 
               {isMoreMenuOpen && (
-                <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-wildwoods-slate border-2 border-wildwoods-amber shadow-2xl p-2 z-50 space-y-1">
+                <div className="fixed sm:absolute right-3 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-1.5rem)] max-w-xs rounded-2xl bg-wildwoods-slate border-2 border-wildwoods-amber shadow-2xl p-2.5 z-50 space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setInterviewStartBlank(!isCustomProfile);
+                      setActiveTab('interview');
+                    }}
+                    className="w-full px-3.5 py-3 rounded-xl bg-wildwoods-amber text-wildwoods-slate text-left text-sm font-extrabold flex items-center gap-2.5 shadow"
+                  >
+                    <Wand2 className="w-4 h-4 shrink-0" />
+                    {isCustomProfile ? 'Edit My Profile & Playlist' : 'Build My Playlist (3 Steps)'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setIsTutorialOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-left text-xs sm:text-sm font-extrabold text-wildwoods-gold border border-wildwoods-amber/40 flex items-center gap-2.5"
+                  >
+                    <HelpCircle className="w-4 h-4 text-wildwoods-gold shrink-0" />
+                    How It Works (Quick Guide)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setActiveTab('jukebox');
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl hover:bg-wildwoods-forest text-left text-xs sm:text-sm font-bold text-wildwoods-cream flex items-center gap-2.5"
+                  >
+                    <Disc3 className="w-4 h-4 text-wildwoods-gold shrink-0" />
+                    Open Jukebox Player
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
                       setIsMoreMenuOpen(false);
                       setActiveTab('home');
                     }}
-                    className="w-full px-3.5 py-2.5 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
+                    className="w-full px-3.5 py-2.5 rounded-xl hover:bg-wildwoods-forest text-left text-xs sm:text-sm font-bold text-wildwoods-cream flex items-center gap-2.5"
                   >
-                    <Home className="w-4 h-4 text-wildwoods-gold" />
+                    <Home className="w-4 h-4 text-wildwoods-gold shrink-0" />
                     Welcome / Home Screen
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      setActiveTab('detective');
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
-                  >
-                    <Search className="w-4 h-4 text-wildwoods-gold" />
-                    Song Finder Studio
-                  </button>
+                  <div className="border-t border-wildwoods-moss my-1 pt-1 space-y-1">
+                    <div className="px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-wildwoods-mint/70">
+                      Caregiver &amp; Clinical Tools
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      setActiveTab('telemetry');
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
-                  >
-                    <Activity className="w-4 h-4 text-wildwoods-gold" />
-                    Caregiver Log &amp; Medical Record
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setActiveTab('detective');
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
+                    >
+                      <Search className="w-4 h-4 text-wildwoods-gold shrink-0" />
+                      Song Finder Studio
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      setActiveTab('science');
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
-                  >
-                    <BookOpen className="w-4 h-4 text-wildwoods-gold" />
-                    Clinical Science &amp; Research
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setActiveTab('telemetry');
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
+                    >
+                      <Activity className="w-4 h-4 text-wildwoods-gold shrink-0" />
+                      Caregiver Log &amp; Medical Record
+                    </button>
 
-                  <div className="border-t border-wildwoods-moss my-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setActiveTab('science');
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
+                    >
+                      <BookOpen className="w-4 h-4 text-wildwoods-gold shrink-0" />
+                      Clinical Science &amp; Research
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -756,7 +782,7 @@ export default function MagicJukeboxApp() {
                       }}
                       className="w-full px-3.5 py-2 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-semibold text-wildwoods-mint flex items-center gap-2.5"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      <RotateCcw className="w-3.5 h-3.5 shrink-0" />
                       Reset Sample Demo Data
                     </button>
                   </div>
