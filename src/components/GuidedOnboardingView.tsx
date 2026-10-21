@@ -594,15 +594,15 @@ export default function GuidedOnboardingView({
                   value={answers.birthYear}
                   onChange={(e) => {
                     const yr = Number(e.target.value) || 1945;
-                    const bumpStartDecade = Math.floor((yr + 12) / 10) * 10;
-                    const bumpSecondDecade = bumpStartDecade + 10;
+                    const rawStartDecade = Math.floor((yr + 12) / 10) * 10;
+                    const clampDecade = (d: number) =>
+                      Math.max(1940, Math.min(2010, d));
+                    const d1 = `decade_${clampDecade(rawStartDecade)}s`;
+                    const d2 = `decade_${clampDecade(rawStartDecade + 10)}s`;
                     updateAnswersAndSync({
                       ...answers,
                       birthYear: yr,
-                      selectedDecades: [
-                        `decade_${bumpStartDecade}s`,
-                        `decade_${bumpSecondDecade}s`,
-                      ],
+                      selectedDecades: Array.from(new Set([d1, d2])),
                     });
                   }}
                   className="w-full min-h-[60px] px-5 py-3 rounded-2xl bg-wildwoods-slate text-wildwoods-gold font-serif font-bold text-3xl text-center"
@@ -799,24 +799,26 @@ export default function GuidedOnboardingView({
             </div>
           </div>
 
-          {/* SECTION B: DECADES / YEAR RANGES (FOR GUESSING ON BEHALF OF A LOVED ONE) */}
+          {/* SECTION B: DECADES / YEAR RANGES (1940s THROUGH 2020s) */}
           <div className="space-y-3 pt-4 border-t border-wildwoods-parchment">
             <div>
               <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold uppercase tracking-wider text-wildwoods-slate">
                 <Calendar className="w-4 h-4 text-wildwoods-amber" />
-                2. Or Pick by Decade (Great When Guessing by Birth Year {answers.birthYear}):
+                2. Pick Favorite Decades / Eras (1940s through 2020s):
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
-                Not sure which genres they liked? Check the decades from when they were 10 to 30
-                years old ({bump.bumpStart}–{bump.bumpEnd}).
+                Check any decades you enjoy—or if you’re guessing on behalf of a loved one, look for
+                the <strong>★ Youth Era</strong> badge from ages 10–30 ({bump.bumpStart}–
+                {bump.bumpEnd}).
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {DECADE_GUESS_OPTIONS.map((dec) => {
                 const isChecked = (answers.selectedDecades || []).includes(dec.id);
+                const decadeEnd = dec.decadeStart === 2010 ? 2029 : dec.decadeStart + 9;
                 const isGoldenEraMatch =
-                  dec.decadeStart + 9 >= bump.bumpStart && dec.decadeStart <= bump.bumpEnd;
+                  decadeEnd >= bump.bumpStart && dec.decadeStart <= bump.bumpEnd;
                 const isPlayingSample = playingPreviewId === dec.id;
                 const isLoadingSample = loadingPreviewId === dec.id;
 

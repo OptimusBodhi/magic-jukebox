@@ -55,58 +55,58 @@ export const SIMPLE_GENRE_OPTIONS = [
   {
     id: 'rock_n_roll_jukebox',
     category: 'upbeat' as const,
-    label: 'Classic Rock & Roll / Jukebox Hits',
-    subtitle: 'Elvis Presley, Chuck Berry, Buddy Holly, The Beatles',
-    searchSeed: 'Elvis Presley Chuck Berry Buddy Holly Beatles',
+    label: 'Rock & Roll & Classic Rock',
+    subtitle: 'Elvis Presley, The Beatles, Fleetwood Mac, Eagles, Tom Petty, Queen',
+    searchSeed: 'The Beatles Fleetwood Mac Tom Petty Queen Elvis Presley',
+  },
+  {
+    id: 'alt_90s_2000s_rock',
+    category: 'upbeat' as const,
+    label: '90s & 2000s Rock, Alternative & Indie',
+    subtitle: 'R.E.M., Pearl Jam, Coldplay, Foo Fighters, U2, Green Day, Counting Crows',
+    searchSeed: 'Coldplay REM Counting Crows Foo Fighters U2 Pearl Jam',
   },
   {
     id: 'classic_country_western',
     category: 'upbeat' as const,
-    label: 'Country, Heartland & Western',
-    subtitle: 'Johnny Cash, Patsy Cline, Willie Nelson, Hank Williams, John Denver',
-    searchSeed: 'Johnny Cash Patsy Cline Willie Nelson John Denver',
+    label: 'Country, Americana & Heartland',
+    subtitle: 'Johnny Cash, Willie Nelson, Dolly Parton, Garth Brooks, Shania Twain, Chris Stapleton',
+    searchSeed: 'Johnny Cash Dolly Parton Willie Nelson George Strait Chris Stapleton',
   },
   {
-    id: 'velvet_crooner_ballads',
+    id: 'pop_singer_songwriter',
     category: 'peaceful' as const,
-    label: 'Warm Crooners & Love Standards',
-    subtitle: 'Frank Sinatra, Nat King Cole, Louis Armstrong, Dean Martin, Perry Como',
-    searchSeed: 'Frank Sinatra Nat King Cole Louis Armstrong Dean Martin',
+    label: 'Pop, Singer-Songwriter & Feel-Good Hits',
+    subtitle: 'Billy Joel, Whitney Houston, Sheryl Crow, Norah Jones, Adele, Jack Johnson',
+    searchSeed: 'Norah Jones Jack Johnson Billy Joel Adele Sheryl Crow',
   },
   {
     id: 'motown_upbeat_soul',
     category: 'upbeat' as const,
-    label: 'Motown, Soul & R&B Classics',
-    subtitle: 'The Temptations, The Supremes, Sam Cooke, Marvin Gaye, Aretha Franklin',
-    searchSeed: 'The Temptations My Girl Sam Cooke Supremes Marvin Gaye',
+    label: 'Motown, R&B, Soul & Hip-Hop Classics',
+    subtitle: 'Stevie Wonder, Marvin Gaye, Temptations, Lauryn Hill, Alicia Keys, Boyz II Men',
+    searchSeed: 'Stevie Wonder Alicia Keys Marvin Gaye Temptations Lauryn Hill',
   },
   {
-    id: 'big_band_swing',
-    category: 'upbeat' as const,
-    label: 'Big Band, Jazz & Swing',
-    subtitle: 'Glenn Miller, Benny Goodman, Ella Fitzgerald, Duke Ellington',
-    searchSeed: 'Glenn Miller In the Mood Ella Fitzgerald Benny Goodman',
+    id: 'velvet_crooner_ballads',
+    category: 'peaceful' as const,
+    label: 'Warm Crooners, Jazz & Big Band Swing',
+    subtitle: 'Frank Sinatra, Nat King Cole, Louis Armstrong, Ella Fitzgerald, Michael Bublé',
+    searchSeed: 'Frank Sinatra Nat King Cole Louis Armstrong Ella Fitzgerald',
   },
   {
     id: 'warm_folk_harmony',
     category: 'peaceful' as const,
-    label: 'Acoustic Folk & Sing-Along Harmony',
-    subtitle: 'Simon & Garfunkel, Peter Paul & Mary, The Beach Boys, Everly Brothers',
-    searchSeed: 'Simon Garfunkel Bridge Over Troubled Water Everly Brothers',
-  },
-  {
-    id: 'sunday_hymns_gospel',
-    category: 'peaceful' as const,
-    label: 'Sunday Hymns, Gospel & Spirituals',
-    subtitle: 'Amazing Grace, How Great Thou Art, Mahalia Jackson, Elvis Gospel',
-    searchSeed: 'Mahalia Jackson Elvis Presley How Great Thou Art Amazing Grace',
+    label: 'Acoustic Folk, Guitar & Harmony',
+    subtitle: 'Simon & Garfunkel, James Taylor, John Denver, Tracy Chapman, Alison Krauss',
+    searchSeed: 'James Taylor Simon Garfunkel Tracy Chapman John Denver',
   },
   {
     id: 'peaceful_piano_strings',
     category: 'peaceful' as const,
-    label: 'Peaceful Piano, Classical & Movie Melodies',
-    subtitle: 'Moon River, Henry Mancini, Clair de Lune, Orchestral Standards',
-    searchSeed: 'Henry Mancini Moon River Glenn Miller Moonlight Serenade',
+    label: 'Peaceful Piano, Classical, Ambient & Hymns',
+    subtitle: 'Clair de Lune, Enya, Ludovico Einaudi, Yo-Yo Ma, Moon River, Amazing Grace',
+    searchSeed: 'Ludovico Einaudi Enya Yo-Yo Ma Henry Mancini Moon River',
   },
 ];
 
@@ -115,36 +115,57 @@ export const DECADE_GUESS_OPTIONS = [
     id: 'decade_1940s',
     decadeStart: 1940,
     label: '1940s Music',
-    subtitle: 'Big Band Swing, Glenn Miller, Bing Crosby, Andrews Sisters',
-    searchSeed: 'Glenn Miller Bing Crosby Andrews Sisters 1940s',
+    subtitle: 'Big Band Swing, Glenn Miller, Bing Crosby, Ella Fitzgerald',
+    searchSeed: 'Glenn Miller Bing Crosby Ella Fitzgerald 1940s',
   },
   {
     id: 'decade_1950s',
     decadeStart: 1950,
     label: '1950s Music',
     subtitle: 'Elvis Presley, Nat King Cole, Patsy Cline, Doo-Wop & Early Rock',
-    searchSeed: 'Elvis Presley Nat King Cole Patsy Cline 1950s',
+    searchSeed: 'Elvis Presley Nat King Cole Patsy Cline Chuck Berry',
   },
   {
     id: 'decade_1960s',
     decadeStart: 1960,
     label: '1960s Music',
-    subtitle: 'The Beatles, Motown, Frank Sinatra,Johnny Cash, Simon & Garfunkel',
-    searchSeed: 'The Beatles Temptations Frank Sinatra Johnny Cash 1960s',
+    subtitle: 'The Beatles, Motown, Frank Sinatra, Johnny Cash, Simon & Garfunkel',
+    searchSeed: 'The Beatles Temptations Frank Sinatra Simon Garfunkel',
   },
   {
     id: 'decade_1970s',
     decadeStart: 1970,
     label: '1970s Music',
-    subtitle: 'John Denver, Carpenters, Fleetwood Mac, Stevie Wonder, Willie Nelson',
-    searchSeed: 'John Denver Carpenters Stevie Wonder Willie Nelson 1970s',
+    subtitle: 'Fleetwood Mac, John Denver, Stevie Wonder, Eagles, Carole King',
+    searchSeed: 'Fleetwood Mac Stevie Wonder John Denver Carole King Eagles',
   },
   {
     id: 'decade_1980s',
     decadeStart: 1980,
     label: '1980s Music',
-    subtitle: 'Whitney Houston, Lionel Richie, Dolly Parton, Billy Joel',
-    searchSeed: 'Lionel Richie Dolly Parton Billy Joel Whitney Houston 1980s',
+    subtitle: 'Whitney Houston, Billy Joel, Tom Petty, U2, Lionel Richie, Journey',
+    searchSeed: 'Whitney Houston Billy Joel Tom Petty U2 Lionel Richie',
+  },
+  {
+    id: 'decade_1990s',
+    decadeStart: 1990,
+    label: '1990s Music',
+    subtitle: 'R.E.M., Pearl Jam, Shania Twain, Mariah Carey, Alanis Morissette, Santana',
+    searchSeed: 'REM Shania Twain Santana Alanis Morissette Pearl Jam Goo Goo Dolls',
+  },
+  {
+    id: 'decade_2000s',
+    decadeStart: 2000,
+    label: '2000s Music',
+    subtitle: 'Coldplay, Norah Jones, Alicia Keys, Jack Johnson, John Mayer, Beyoncé',
+    searchSeed: 'Coldplay Norah Jones Alicia Keys Jack Johnson John Mayer',
+  },
+  {
+    id: 'decade_2010s',
+    decadeStart: 2010,
+    label: '2010s & 2020s Music',
+    subtitle: 'Adele, Ed Sheeran, Chris Stapleton, Kacey Musgraves, Bruno Mars, Taylor Swift',
+    searchSeed: 'Adele Ed Sheeran Chris Stapleton Kacey Musgraves Bruno Mars',
   },
 ];
 
@@ -409,21 +430,25 @@ export async function synthesizeInterviewIntoJukebox(
     answers.youthFavoriteArtistOrSong.trim(),
     youthPresetSeeds[0],
     decadeSeeds[0],
-    youthPresetSeeds[1] || `${bump.epochs[0].startYear} upbeat hits`,
-    'Elvis Presley Chuck Berry Supremes',
+    youthPresetSeeds[1],
+    decadeSeeds[1],
+    `${bump.epochs[0].startYear} hits`,
   ].filter(Boolean) as string[];
 
   const phase2Queries = [
     answers.courtshipSongOrArtist.trim(),
     decadeSeeds[1] || decadeSeeds[0],
-    `Frank Sinatra Fly Me to the Moon ${bump.epochs[1].startYear}`,
-    'The Temptations My Girl Ben E King Stand By Me Sam Cooke',
+    youthPresetSeeds[0],
+    sanctuaryPresetSeeds[0],
+    `${bump.epochs[1].startYear} classic songs`,
   ].filter(Boolean) as string[];
 
   const phase3Queries = [
     answers.sanctuarySpecificSong.trim(),
-    sanctuaryPresetSeeds[0] || 'Nat King Cole Unforgettable Louis Armstrong Wonderful World',
-    sanctuaryPresetSeeds[1] || 'Simon Garfunkel Bridge Over Troubled Water Andy Williams Moon River',
+    sanctuaryPresetSeeds[0],
+    sanctuaryPresetSeeds[1],
+    decadeSeeds[decadeSeeds.length - 1],
+    'Norah Jones Simon Garfunkel Louis Armstrong Wonderful World',
   ].filter(Boolean) as string[];
 
   const collectedTracks: BiographicalTrack[] = [];
@@ -482,8 +507,8 @@ export async function synthesizeInterviewIntoJukebox(
           ];
           memoryNote =
             answers.youthDanceMemory.trim() ||
-            `Formative Youth (${bump.epochs[0].startYear}–${bump.epochs[0].endYear}): Captures ${profile.preferredName}'s rhythmic motor attention via ventral pre-SMA entrainment.`;
-          duetPrompt = `Clap or tap gently on beats 2 and 4 with ${profile.preferredName} and ask about teenage radio favorites in ${profile.hometown}.`;
+            `Upbeat Favorite (${item.year}): Captures ${profile.preferredName}'s rhythmic motor attention via ventral pre-SMA entrainment.`;
+          duetPrompt = `Clap or tap gently on beats 2 and 4 with ${profile.preferredName} and ask what memories come to mind when this song plays.`;
         } else if (targetTier === 'phase2_bridge') {
           bpm = 84 + (collectedTracks.length % 16); // 84-99 BPM
           energy = 5;
@@ -493,7 +518,7 @@ export async function synthesizeInterviewIntoJukebox(
           ];
           memoryNote =
             answers.courtshipMemoryStory.trim() ||
-            `Courtship & Young Adulthood (${bump.epochs[1].startYear}–${bump.epochs[1].endYear})${
+            `Heart & Story Song (${item.year})${
               answers.spouseOrCompanionName
                 ? ` with ${answers.spouseOrCompanionName}`
                 : ''
@@ -508,14 +533,14 @@ export async function synthesizeInterviewIntoJukebox(
             'PLST Stress Threshold Restoration',
             'DMN Functional Connectivity',
           ];
-          memoryNote = `Sanctuary & Deep Calm Anchor: Restores ${profile.preferredName}'s Progressively Lowered Stress Threshold (PLST) and entrains heart rate toward 64 BPM.`;
+          memoryNote = `Peaceful Sanctuary Anchor (${item.year}): Restores ${profile.preferredName}'s Progressively Lowered Stress Threshold (PLST) and settles heart rate toward 64 BPM.`;
           duetPrompt =
             answers.sanctuaryMemoryPrompt.trim() ||
             `Breathe slowly with ${profile.preferredName} and enjoy the peaceful resolution of the melody.`;
         }
 
         const clampedYear =
-          item.year >= 1930 && item.year <= 1995
+          item.year >= 1920 && item.year <= 2030
             ? item.year
             : bump.bumpStart + (collectedTracks.length * 2);
 
