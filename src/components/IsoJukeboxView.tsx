@@ -328,22 +328,22 @@ export default function IsoJukeboxView({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* Column 1: Where We Are (Current Emotional State) */}
-          <div className="lg:col-span-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-wildwoods-slate uppercase tracking-wider flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
+        <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 lg:gap-5 items-stretch">
+          {/* Module Half 1: Where We Are Now (Current Emotional State) */}
+          <div className="lg:col-span-5 bg-amber-50/40 rounded-3xl p-5 md:p-6 border-2 border-amber-300/80 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-amber-200/80">
+              <h3 className="text-base font-extrabold text-wildwoods-slate uppercase tracking-wider flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-extrabold shadow-sm">
                   1
                 </span>
-                Where We Are Now (Current Emotional State)
+                Where We Are Now
               </h3>
-              <span className="text-xs font-semibold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full">
-                Phase 1 State Match (Minutes 0–7)
+              <span className="text-xs font-bold text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1 rounded-full">
+                Current State • Phase 1 Match
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
               {CURRENT_EMOTIONAL_STATES.map((state) => {
                 const isSelected = state.id === currentStateId;
                 return (
@@ -354,7 +354,7 @@ export default function IsoJukeboxView({
                     className={`min-h-[112px] text-left p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'bg-wildwoods-slate text-wildwoods-cream border-wildwoods-amber shadow-lg scale-[1.01]'
-                        : 'bg-wildwoods-cream hover:bg-wildwoods-parchment text-wildwoods-slate border-wildwoods-sand'
+                        : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-amber-200/90'
                     }`}
                   >
                     <div>
@@ -385,21 +385,41 @@ export default function IsoJukeboxView({
             </div>
           </div>
 
-          {/* Column 2: Where We Want To Be (Target Therapeutic State) */}
-          <div className="lg:col-span-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-wildwoods-slate uppercase tracking-wider flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-wildwoods-sage text-white text-xs flex items-center justify-center font-bold">
+          {/* Center Directional Right-Arrow Bridge Connector */}
+          <div className="lg:col-span-1 flex flex-row lg:flex-col items-center justify-center py-2 lg:py-0">
+            <div className="hidden lg:block w-0.5 flex-1 bg-gradient-to-b from-amber-300 via-wildwoods-amber to-emerald-400 opacity-60" />
+            <div className="my-2 px-3 py-3 rounded-2xl bg-wildwoods-slate text-wildwoods-cream border-2 border-wildwoods-amber shadow-lg flex flex-col items-center justify-center text-center gap-1 min-w-[92px]">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-wildwoods-gold">
+                Iso-Bridge
+              </span>
+              <div className="w-10 h-10 rounded-full bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow">
+                <ArrowRight className="w-6 h-6 stroke-[2.5] rotate-90 lg:rotate-0 transition-transform" />
+              </div>
+              <span className="text-[11px] font-mono font-bold text-wildwoods-mint">
+                {trajectory.currentState.targetBpm}→{trajectory.targetState.targetBpm}
+              </span>
+              <span className="text-[9px] uppercase tracking-wider text-wildwoods-mint/80">
+                BPM Slope
+              </span>
+            </div>
+            <div className="hidden lg:block w-0.5 flex-1 bg-gradient-to-b from-emerald-400 to-emerald-600 opacity-60" />
+          </div>
+
+          {/* Module Half 2: Where We Want To Be (Target Therapeutic Goal) */}
+          <div className="lg:col-span-5 bg-emerald-50/40 rounded-3xl p-5 md:p-6 border-2 border-emerald-300/80 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-emerald-200/80">
+              <h3 className="text-base font-extrabold text-wildwoods-slate uppercase tracking-wider flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-full bg-wildwoods-sage text-white text-xs flex items-center justify-center font-extrabold shadow-sm">
                   2
                 </span>
-                Where We Want To Be (Target Therapeutic Goal)
+                Where We Want To Be
               </h3>
-              <span className="text-xs font-semibold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-full">
-                Phase 3 Resolution (Minutes 19–30)
+              <span className="text-xs font-bold text-emerald-900 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
+                Target Goal • Phase 3 Resolution
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-3 flex-1">
               {TARGET_THERAPEUTIC_STATES.map((target) => {
                 const isSelected = target.id === targetStateId;
                 return (
@@ -410,7 +430,7 @@ export default function IsoJukeboxView({
                     className={`min-h-[86px] text-left p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'bg-wildwoods-forest text-wildwoods-cream border-emerald-400 shadow-lg scale-[1.01]'
-                        : 'bg-wildwoods-cream hover:bg-wildwoods-parchment text-wildwoods-slate border-wildwoods-sand'
+                        : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-emerald-200/90'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
