@@ -22,6 +22,10 @@ import {
   Brain,
   Mic2,
   Waves,
+  Share2,
+  ExternalLink,
+  Copy,
+  Printer,
 } from 'lucide-react';
 import {
   CURRENT_EMOTIONAL_STATES,
@@ -32,6 +36,7 @@ import {
   SequencedTrack,
   PatientProfile,
 } from '@/lib/iso-sequencer';
+import { getFullSongStreamingLinks } from '@/lib/share-and-export';
 
 interface IsoJukeboxViewProps {
   patient: PatientProfile;
@@ -59,6 +64,8 @@ interface IsoJukeboxViewProps {
   onToggleGerdnerTimer: () => void;
   onOpenGuidedInterview?: () => void;
   isCustomProfile?: boolean;
+  onCopyShareLink?: () => void;
+  onCopyCaregiverSheet?: () => void;
 }
 
 export default function IsoJukeboxView({
@@ -87,6 +94,8 @@ export default function IsoJukeboxView({
   onToggleGerdnerTimer,
   onOpenGuidedInterview,
   isCustomProfile = false,
+  onCopyShareLink,
+  onCopyCaregiverSheet,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
   const [quarantineToast, setQuarantineToast] = useState<string | null>(null);
@@ -275,7 +284,7 @@ export default function IsoJukeboxView({
               <button
                 type="button"
                 onClick={onOpenGuidedInterview}
-                className="min-h-[52px] px-5 py-3 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition"
+                className="min-h-[48px] px-5 py-2.5 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition"
               >
                 <Sparkles className="w-4 h-4" />
                 {isCustomProfile
@@ -283,25 +292,58 @@ export default function IsoJukeboxView({
                   : 'Create Your Own Jukebox (2-Min Setup)'}
               </button>
             )}
-            <div className="bg-wildwoods-forest px-4 py-3 rounded-2xl border border-wildwoods-moss text-left">
-              <div className="text-xs text-wildwoods-mint uppercase tracking-wider">
-                Sundowning Shield (Gerdner IMIA)
-              </div>
-              <div className="text-sm font-bold text-wildwoods-gold flex items-center gap-1.5 mt-0.5">
-                <Clock className="w-4 h-4" />
-                Auto-Dosing 4:00 PM (30m before {patient.sundowningPeakTime} peak)
-              </div>
-            </div>
 
-            <div className="bg-wildwoods-forest px-4 py-3 rounded-2xl border border-wildwoods-moss text-left">
-              <div className="text-xs text-wildwoods-mint uppercase tracking-wider">
-                Red Flag Quarantine
-              </div>
-              <div className="text-sm font-bold text-red-300 flex items-center gap-1.5 mt-0.5">
-                <ShieldAlert className="w-4 h-4 text-red-400" />
-                {quarantinedCount} Trigger {quarantinedCount === 1 ? 'Track' : 'Tracks'} Blocked
-              </div>
-            </div>
+            {onCopyShareLink && (
+              <button
+                type="button"
+                onClick={onCopyShareLink}
+                className="min-h-[48px] px-4 py-2.5 rounded-2xl bg-emerald-800 hover:bg-emerald-700 text-white border border-emerald-400/50 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md transition"
+                title="Copy a shareable link containing this profile, custom songs, Memory Mirror notes, and Red Flag list"
+              >
+                <Share2 className="w-4 h-4 text-emerald-200" />
+                Copy Shareable Family Link
+              </button>
+            )}
+
+            {onCopyCaregiverSheet && (
+              <button
+                type="button"
+                onClick={onCopyCaregiverSheet}
+                className="min-h-[48px] px-4 py-2.5 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/60 font-bold text-xs sm:text-sm flex items-center gap-2 transition"
+                title="Copy formatted 3-Phase Iso-Principle Prescription & Caregiver Sheet"
+              >
+                <Copy className="w-4 h-4 text-wildwoods-gold" />
+                Copy Caregiver Sheet
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-mint border border-wildwoods-moss font-bold text-xs flex items-center gap-1.5 transition"
+              title="Print Bedside Wall Chart"
+            >
+              <Printer className="w-4 h-4 text-wildwoods-gold" />
+              Print Chart
+            </button>
+          </div>
+        </div>
+
+        {/* Secondary Status Strip */}
+        <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-wildwoods-moss text-xs">
+          <div className="flex items-center gap-2 text-wildwoods-gold font-semibold">
+            <Clock className="w-4 h-4" />
+            <span>
+              Proactive Sundowning Shield: Auto-Dosing 30m prior to {patient.sundowningPeakTime}{' '}
+              peak
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-red-300 font-semibold">
+            <ShieldAlert className="w-4 h-4 text-red-400" />
+            <span>
+              Red Flag Quarantine: {quarantinedCount} Trigger{' '}
+              {quarantinedCount === 1 ? 'Track' : 'Tracks'} Blocked
+            </span>
           </div>
         </div>
       </section>
@@ -650,6 +692,44 @@ export default function IsoJukeboxView({
                     Red Flag Quarantine Track
                   </button>
                 </div>
+
+                {/* 1-Click Full-Length Streaming Launchers (Spotify / Apple Music / YouTube) */}
+                {(() => {
+                  const fullLinks = getFullSongStreamingLinks(currentTrack);
+                  return (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-wildwoods-moss/80 text-xs">
+                      <span className="text-wildwoods-mint font-semibold">
+                        1-Click Full-Length Song Stream:
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={fullLinks.spotifyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 border border-emerald-500/40 font-bold inline-flex items-center gap-1.5 transition"
+                        >
+                          Spotify Full Song <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        <a
+                          href={fullLinks.appleMusicUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/50 font-bold inline-flex items-center gap-1.5 transition"
+                        >
+                          Apple Music <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        <a
+                          href={fullLinks.youtubeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/40 font-bold inline-flex items-center gap-1.5 transition"
+                        >
+                          YouTube Full Audio <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Mode-Specific Panel: Receptive Calm vs. Caregiver Duet & Story Mode */}
@@ -995,12 +1075,32 @@ export default function IsoJukeboxView({
                           </button>
                         </div>
 
-                        {/* Neuro Badges & Memory Snippet */}
-                        <div className="mt-2.5 pt-2 border-t border-current/10 flex flex-wrap items-center justify-between gap-1 text-[11px]">
+                        {/* Neuro Badges & 1-Click Full-Song Links */}
+                        <div className="mt-2.5 pt-2 border-t border-current/10 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                           <span className="font-semibold opacity-90">
                             {track.neuroTargets[0]}
                           </span>
-                          <span className="opacity-75">Iso-Fit: {track.isoFitScore}%</span>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={getFullSongStreamingLinks(track).spotifyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline font-bold opacity-85 hover:opacity-100"
+                              title="Open full song on Spotify"
+                            >
+                              Spotify
+                            </a>
+                            <span>•</span>
+                            <a
+                              href={getFullSongStreamingLinks(track).youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline font-bold opacity-85 hover:opacity-100"
+                              title="Open full song on YouTube"
+                            >
+                              YouTube
+                            </a>
+                          </div>
                         </div>
                       </div>
                     );

@@ -296,15 +296,18 @@ export default function LandingHomeView({
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Full-Song Streaming Links:</strong> Open any sequenced track directly in
-                  Spotify, Apple Music, or YouTube Music for full-length continuous playback.
+                  <strong>1-Click Full-Song Streaming &amp; Shareable Family Links:</strong> Open
+                  any sequenced track in Spotify, Apple Music, or YouTube for full-length playback,
+                  or click <em>Copy Shareable Family Link</em> to send your custom Jukebox to any
+                  sibling, caregiver, or nurse’s tablet with zero login.
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <Users className="w-4 h-4 text-wildwoods-amber shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Phase 2 Pilot Roadmap:</strong> Cloud family-link sharing across multiple
-                  caregivers, direct Spotify/Apple playlist export, and care-home EHR telemetry.
+                  <strong>Printable Bedside Care Sheet:</strong> Copy or print the 3-Phase
+                  Iso-Principle Prescription, Memory Mirror prompts, and Red Flag Do-Not-Play list
+                  for bedside care teams.
                 </span>
               </li>
             </ul>

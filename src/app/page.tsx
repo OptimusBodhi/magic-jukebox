@@ -31,6 +31,11 @@ import {
   sequenceIsoPlaylist,
 } from '@/lib/iso-sequencer';
 import { hydrateSeedTracksWithItunes } from '@/lib/itunes-audio';
+import {
+  decodeShareableJukeboxParam,
+  encodeShareableJukeboxUrl,
+  formatCaregiverPrescriptionText,
+} from '@/lib/share-and-export';
 import IsoJukeboxView from '@/components/IsoJukeboxView';
 import MusicDetectiveView from '@/components/MusicDetectiveView';
 import ClinicalTelemetryView from '@/components/ClinicalTelemetryView';
@@ -79,10 +84,39 @@ export default function MagicJukeboxApp() {
   const synthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Load persisted state from LocalStorage on mount, then hydrate iTunes audio previews
+  // Load shared URL (?share=...) or persisted state from LocalStorage on mount, then hydrate iTunes audio previews
   useEffect(() => {
     let initialTracks = ARTHUR_SEED_TRACKS;
     try {
+      const params = new URLSearchParams(window.location.search);
+      const sharedParam = params.get('share');
+      if (sharedParam) {
+        const decoded = decodeShareableJukeboxParam(sharedParam);
+        if (decoded) {
+          setPatient(decoded.patient);
+          setIsCustomProfile(true);
+          setCurrentStateId(decoded.currentStateId);
+          setTargetStateId(decoded.targetStateId);
+          if (decoded.tracks.length > 0) {
+            initialTracks = decoded.tracks;
+            setLibrary(decoded.tracks);
+          }
+          if (decoded.quarantinedList.length > 0) {
+            setQuarantinedList(decoded.quarantinedList);
+          }
+          setActiveTab('jukebox');
+          setInterviewCompleteBanner(
+            `🔗 Loaded Shared Family Jukebox for ${decoded.patient.name} (Reminiscence Bump: ${
+              decoded.patient.birthYear + 10
+            }–${decoded.patient.birthYear + 30}).`
+          );
+          hydrateSeedTracksWithItunes(initialTracks).then((hydrated) => {
+            setLibrary(hydrated);
+          });
+          return;
+        }
+      }
+
       const savedRaw = localStorage.getItem(STORAGE_KEY);
       if (savedRaw) {
         const parsed = JSON.parse(savedRaw);
@@ -385,9 +419,46 @@ export default function MagicJukeboxApp() {
     setIsPreviewPlaying(false);
   };
 
+  const handleCopyShareLink = async () => {
+    const shareUrl = encodeShareableJukeboxUrl(
+      window.location.origin + window.location.pathname,
+      patient,
+      library,
+      quarantinedList,
+      currentStateId,
+      targetStateId
+    );
+    try {
+      window.history.replaceState({}, '', shareUrl);
+      await navigator.clipboard.writeText(shareUrl);
+      setInterviewCompleteBanner(
+        `🔗 Shareable Family & Care-Team Link copied to clipboard! Anyone opening this link on any phone or tablet will load ${patient.name}’s custom Jukebox.`
+      );
+      setTimeout(() => setInterviewCompleteBanner(null), 8000);
+    } catch {
+      setInterviewCompleteBanner(`Shareable Link ready in your browser address bar: ${shareUrl}`);
+    }
+  };
+
+  const handleCopyCaregiverSheet = async () => {
+    const text = formatCaregiverPrescriptionText(patient, trajectory, quarantinedList);
+    try {
+      await navigator.clipboard.writeText(text);
+      setInterviewCompleteBanner(
+        `📋 Copied ${patient.name}’s 3-Phase Iso-Principle Prescription, Memory Mirror notes & Red Flag list to clipboard!`
+      );
+      setTimeout(() => setInterviewCompleteBanner(null), 7000);
+    } catch {
+      // Ignore clipboard error
+    }
+  };
+
   const handleResetDemoState = () => {
     stopAllAudio();
     localStorage.removeItem(STORAGE_KEY);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
     setPatient(DEFAULT_PATIENT_PROFILE);
     setIsCustomProfile(false);
     setQuarantinedList(INITIAL_QUARANTINED_TRACKS);
@@ -626,6 +697,8 @@ export default function MagicJukeboxApp() {
               setInterviewStartBlank(!isCustomProfile);
               setActiveTab('interview');
             }}
+            onCopyShareLink={handleCopyShareLink}
+            onCopyCaregiverSheet={handleCopyCaregiverSheet}
           />
         )}
 

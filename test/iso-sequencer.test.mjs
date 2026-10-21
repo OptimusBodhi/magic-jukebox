@@ -41,3 +41,12 @@ test('Guided Onboarding Interview module & UI component exist and define 6 clini
   assert.match(onboardingView, /The 6-Question “Music Detective” Guided Interview/);
 });
 
+test('Shareable Family URL link encoder/decoder and 1-Click Streaming/Care Sheet utilities exist', () => {
+  const shareLib = fs.readFileSync(path.resolve('src/lib/share-and-export.ts'), 'utf8');
+  assert.match(shareLib, /encodeShareableJukeboxUrl/);
+  assert.match(shareLib, /decodeShareableJukeboxParam/);
+  assert.match(shareLib, /getFullSongStreamingLinks/);
+  assert.match(shareLib, /formatCaregiverPrescriptionText/);
+});
+
+
