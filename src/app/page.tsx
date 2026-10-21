@@ -699,6 +699,7 @@ export default function MagicJukeboxApp() {
             }}
             onCopyShareLink={handleCopyShareLink}
             onCopyCaregiverSheet={handleCopyCaregiverSheet}
+            onQuickMoodLog={(newLog) => setBarsLogs((prev) => [...prev, newLog])}
           />
         )}
 
