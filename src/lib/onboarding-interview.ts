@@ -45,7 +45,108 @@ export interface GuidedInterviewAnswers {
   sundowningPeakTime: string;
   initialCurrentState: CurrentEmotionalStateId;
   initialTargetState: TargetTherapeuticStateId;
+
+  // Optional Decades & Hand-Picked Songs
+  selectedDecades?: string[];
+  handPickedTracks?: BiographicalTrack[];
 }
+
+export const SIMPLE_GENRE_OPTIONS = [
+  {
+    id: 'rock_n_roll_jukebox',
+    category: 'upbeat' as const,
+    label: 'Classic Rock & Roll / Jukebox Hits',
+    subtitle: 'Elvis Presley, Chuck Berry, Buddy Holly, The Beatles',
+    searchSeed: 'Elvis Presley Chuck Berry Buddy Holly Beatles',
+  },
+  {
+    id: 'classic_country_western',
+    category: 'upbeat' as const,
+    label: 'Country, Heartland & Western',
+    subtitle: 'Johnny Cash, Patsy Cline, Willie Nelson, Hank Williams, John Denver',
+    searchSeed: 'Johnny Cash Patsy Cline Willie Nelson John Denver',
+  },
+  {
+    id: 'velvet_crooner_ballads',
+    category: 'peaceful' as const,
+    label: 'Warm Crooners & Love Standards',
+    subtitle: 'Frank Sinatra, Nat King Cole, Louis Armstrong, Dean Martin, Perry Como',
+    searchSeed: 'Frank Sinatra Nat King Cole Louis Armstrong Dean Martin',
+  },
+  {
+    id: 'motown_upbeat_soul',
+    category: 'upbeat' as const,
+    label: 'Motown, Soul & R&B Classics',
+    subtitle: 'The Temptations, The Supremes, Sam Cooke, Marvin Gaye, Aretha Franklin',
+    searchSeed: 'The Temptations My Girl Sam Cooke Supremes Marvin Gaye',
+  },
+  {
+    id: 'big_band_swing',
+    category: 'upbeat' as const,
+    label: 'Big Band, Jazz & Swing',
+    subtitle: 'Glenn Miller, Benny Goodman, Ella Fitzgerald, Duke Ellington',
+    searchSeed: 'Glenn Miller In the Mood Ella Fitzgerald Benny Goodman',
+  },
+  {
+    id: 'warm_folk_harmony',
+    category: 'peaceful' as const,
+    label: 'Acoustic Folk & Sing-Along Harmony',
+    subtitle: 'Simon & Garfunkel, Peter Paul & Mary, The Beach Boys, Everly Brothers',
+    searchSeed: 'Simon Garfunkel Bridge Over Troubled Water Everly Brothers',
+  },
+  {
+    id: 'sunday_hymns_gospel',
+    category: 'peaceful' as const,
+    label: 'Sunday Hymns, Gospel & Spirituals',
+    subtitle: 'Amazing Grace, How Great Thou Art, Mahalia Jackson, Elvis Gospel',
+    searchSeed: 'Mahalia Jackson Elvis Presley How Great Thou Art Amazing Grace',
+  },
+  {
+    id: 'peaceful_piano_strings',
+    category: 'peaceful' as const,
+    label: 'Peaceful Piano, Classical & Movie Melodies',
+    subtitle: 'Moon River, Henry Mancini, Clair de Lune, Orchestral Standards',
+    searchSeed: 'Henry Mancini Moon River Glenn Miller Moonlight Serenade',
+  },
+];
+
+export const DECADE_GUESS_OPTIONS = [
+  {
+    id: 'decade_1940s',
+    decadeStart: 1940,
+    label: '1940s Music',
+    subtitle: 'Big Band Swing, Glenn Miller, Bing Crosby, Andrews Sisters',
+    searchSeed: 'Glenn Miller Bing Crosby Andrews Sisters 1940s',
+  },
+  {
+    id: 'decade_1950s',
+    decadeStart: 1950,
+    label: '1950s Music',
+    subtitle: 'Elvis Presley, Nat King Cole, Patsy Cline, Doo-Wop & Early Rock',
+    searchSeed: 'Elvis Presley Nat King Cole Patsy Cline 1950s',
+  },
+  {
+    id: 'decade_1960s',
+    decadeStart: 1960,
+    label: '1960s Music',
+    subtitle: 'The Beatles, Motown, Frank Sinatra,Johnny Cash, Simon & Garfunkel',
+    searchSeed: 'The Beatles Temptations Frank Sinatra Johnny Cash 1960s',
+  },
+  {
+    id: 'decade_1970s',
+    decadeStart: 1970,
+    label: '1970s Music',
+    subtitle: 'John Denver, Carpenters, Fleetwood Mac, Stevie Wonder, Willie Nelson',
+    searchSeed: 'John Denver Carpenters Stevie Wonder Willie Nelson 1970s',
+  },
+  {
+    id: 'decade_1980s',
+    decadeStart: 1980,
+    label: '1980s Music',
+    subtitle: 'Whitney Houston, Lionel Richie, Dolly Parton, Billy Joel',
+    searchSeed: 'Lionel Richie Dolly Parton Billy Joel Whitney Houston 1980s',
+  },
+];
 
 export const YOUTH_STYLE_OPTIONS = [
   {
@@ -282,34 +383,62 @@ export async function synthesizeInterviewIntoJukebox(
   };
 
   // Build targeted search queries for Phase 1 (Brisk Youth), Phase 2 (Courtship Bridge), and Phase 3 (Sanctuary Calm)
-  const youthPresetSeeds = YOUTH_STYLE_OPTIONS.filter((o) =>
-    answers.youthStyles.includes(o.id)
-  ).map((o) => o.searchSeed);
+  const youthPresetSeeds = [
+    ...SIMPLE_GENRE_OPTIONS.filter((o) => answers.youthStyles.includes(o.id)).map(
+      (o) => o.searchSeed
+    ),
+    ...YOUTH_STYLE_OPTIONS.filter((o) => answers.youthStyles.includes(o.id)).map(
+      (o) => o.searchSeed
+    ),
+  ];
 
-  const sanctuaryPresetSeeds = SANCTUARY_STYLE_OPTIONS.filter((o) =>
-    answers.sanctuaryStyles.includes(o.id)
-  ).map((o) => o.searchSeed);
+  const sanctuaryPresetSeeds = [
+    ...SIMPLE_GENRE_OPTIONS.filter((o) => answers.sanctuaryStyles.includes(o.id)).map(
+      (o) => o.searchSeed
+    ),
+    ...SANCTUARY_STYLE_OPTIONS.filter((o) => answers.sanctuaryStyles.includes(o.id)).map(
+      (o) => o.searchSeed
+    ),
+  ];
+
+  const decadeSeeds = DECADE_GUESS_OPTIONS.filter((d) =>
+    (answers.selectedDecades || []).includes(d.id)
+  ).map((d) => d.searchSeed);
 
   const phase1Queries = [
     answers.youthFavoriteArtistOrSong.trim(),
-    youthPresetSeeds[0] || `${bump.epochs[0].startYear} upbeat hits`,
-    youthPresetSeeds[1] || 'Elvis Presley Chuck Berry Supremes',
-  ].filter(Boolean);
+    youthPresetSeeds[0],
+    decadeSeeds[0],
+    youthPresetSeeds[1] || `${bump.epochs[0].startYear} upbeat hits`,
+    'Elvis Presley Chuck Berry Supremes',
+  ].filter(Boolean) as string[];
 
   const phase2Queries = [
     answers.courtshipSongOrArtist.trim(),
+    decadeSeeds[1] || decadeSeeds[0],
     `Frank Sinatra Fly Me to the Moon ${bump.epochs[1].startYear}`,
     'The Temptations My Girl Ben E King Stand By Me Sam Cooke',
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
   const phase3Queries = [
     answers.sanctuarySpecificSong.trim(),
     sanctuaryPresetSeeds[0] || 'Nat King Cole Unforgettable Louis Armstrong Wonderful World',
     sanctuaryPresetSeeds[1] || 'Simon Garfunkel Bridge Over Troubled Water Andy Williams Moon River',
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
   const collectedTracks: BiographicalTrack[] = [];
   const seenKeys = new Set<string>();
+
+  // First include any songs the user explicitly checked/added in Step 3!
+  if (Array.isArray(answers.handPickedTracks) && answers.handPickedTracks.length > 0) {
+    for (const picked of answers.handPickedTracks) {
+      const dedupeKey = `${picked.title.toLowerCase()}::${picked.artist.toLowerCase()}`;
+      if (!seenKeys.has(dedupeKey)) {
+        seenKeys.add(dedupeKey);
+        collectedTracks.push(picked);
+      }
+    }
+  }
 
   const addCandidateGroup = async (
     queries: string[],

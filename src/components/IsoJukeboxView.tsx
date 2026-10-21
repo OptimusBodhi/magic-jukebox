@@ -222,6 +222,8 @@ export default function IsoJukeboxView({
   onUpdatePatientProfile,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
+  const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
+  const [playlistFilterMode, setPlaylistFilterMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>('all');
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
   const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
   const [isEditingHeaderProfile, setIsEditingHeaderProfile] = useState(false);
@@ -238,6 +240,26 @@ export default function IsoJukeboxView({
   const [isQuickSearching, setIsQuickSearching] = useState(false);
   const [quickMemoryDraft, setQuickMemoryDraft] = useState('');
   const [quickVibe, setQuickVibe] = useState<'upbeat' | 'warm' | 'peaceful'>('warm');
+  const [quickPreviewTrackId, setQuickPreviewTrackId] = useState<string | null>(null);
+  const quickAudioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const toggleQuickPreview = (cand: ItunesCandidateTrack) => {
+    if (!cand.previewUrl) return;
+    if (quickPreviewTrackId === cand.trackId) {
+      quickAudioRef.current?.pause();
+      setQuickPreviewTrackId(null);
+      return;
+    }
+    if (quickAudioRef.current) {
+      quickAudioRef.current.pause();
+    }
+    const audio = new Audio(cand.previewUrl);
+    audio.volume = 0.85;
+    audio.onended = () => setQuickPreviewTrackId(null);
+    audio.play().catch(() => setQuickPreviewTrackId(null));
+    quickAudioRef.current = audio;
+    setQuickPreviewTrackId(cand.trackId);
+  };
 
   // Living Playlist: Inline Edit Memory state for active song
   const [isEditingMemory, setIsEditingMemory] = useState(false);
@@ -245,7 +267,24 @@ export default function IsoJukeboxView({
   const [editPromptText, setEditPromptText] = useState('');
   const [editVibe, setEditVibe] = useState<'upbeat' | 'warm' | 'peaceful'>('warm');
 
-  const currentTrack = activeTrack || trajectory.orderedTracks[0] || null;
+  const displayedTracks = React.useMemo(() => {
+    const all = trajectory.orderedTracks;
+    if (playlistFilterMode === 'relaxing') {
+      const calm = all
+        .filter((t) => t.bpm <= 86 || t.energy <= 4 || t.phase === 3)
+        .sort((a, b) => a.bpm - b.bpm);
+      return calm.length > 0 ? calm : [...all].sort((a, b) => a.bpm - b.bpm);
+    }
+    if (playlistFilterMode === 'upbeat') {
+      const lively = all
+        .filter((t) => t.bpm >= 90 || t.energy >= 6 || t.phase === 1)
+        .sort((a, b) => b.bpm - a.bpm);
+      return lively.length > 0 ? lively : [...all].sort((a, b) => b.bpm - a.bpm);
+    }
+    return all;
+  }, [trajectory.orderedTracks, playlistFilterMode]);
+
+  const currentTrack = activeTrack || displayedTracks[0] || trajectory.orderedTracks[0] || null;
 
   const openMemoryEditor = (track: SequencedTrack) => {
     setEditMemoryText(track.memoryNote);
@@ -662,119 +701,224 @@ export default function IsoJukeboxView({
         </div>
       </section>
 
-      {/* 2. Quick & Easy Mood Check-In: Mood Before -> Mood After */}
+      {/* 2. Simple Playlist Vibe Selector + Optional Expandable Mood Check-In */}
       <section
-        aria-label="Quick Mood Before and After Check-In"
-        className="bg-white rounded-3xl p-5 md:p-6 shadow-md border border-wildwoods-sand"
+        aria-label="Playlist Vibe Mode and Optional Mood Check-In"
+        className="bg-white rounded-3xl p-4 sm:p-5 shadow-md border border-wildwoods-sand space-y-4"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 items-stretch">
-          {/* Left Half: Mood Before Music */}
-          <div className="lg:col-span-5 bg-amber-50/50 rounded-2xl p-4 md:p-5 border-2 border-amber-200/90 flex flex-col justify-between space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm sm:text-base font-extrabold text-wildwoods-slate flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
-                  1
-                </span>
-                Mood Before Music
-              </h2>
-              <span className="text-[11px] font-semibold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                Auto-Tunes Playlist
-              </span>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Direct Playlist Vibe Pills ("Just Play All Relaxing", etc.) */}
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+              How would you like to play this playlist right now?
             </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              {SIMPLE_MOOD_BEFORE.map((item) => {
-                const isSelected = currentStateId === item.id;
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  {
+                    id: 'all',
+                    label: '🎵 Play All Songs',
+                    desc: 'Full playlist',
+                  },
+                  {
+                    id: 'relaxing',
+                    label: '🌙 Just Relaxing & Peaceful',
+                    desc: 'Calm, soothing songs only',
+                  },
+                  {
+                    id: 'upbeat',
+                    label: '☀️ Just Upbeat & Cheerful',
+                    desc: 'Lively sing-alongs only',
+                  },
+                  {
+                    id: 'arc',
+                    label: '🌊 Gradual Mood-to-Calm Arc',
+                    desc: 'Matches mood & eases to calm',
+                  },
+                ] as const
+              ).map((mode) => {
+                const isSelected = playlistFilterMode === mode.id;
                 return (
                   <button
-                    key={item.id}
+                    key={mode.id}
                     type="button"
-                    onClick={() => handleSelectSimpleBeforeMood(item)}
-                    className={`min-h-[72px] p-3 rounded-xl border-2 text-left transition flex flex-col justify-center ${
+                    onClick={() => {
+                      setPlaylistFilterMode(mode.id);
+                      if (mode.id === 'arc') {
+                        setShowMoodCheckIn(true);
+                      }
+                      if (mode.id === 'relaxing') {
+                        const calm = trajectory.orderedTracks
+                          .filter((t) => t.bpm <= 86 || t.energy <= 4 || t.phase === 3)
+                          .sort((a, b) => a.bpm - b.bpm);
+                        const firstCalm = calm[0] || trajectory.orderedTracks[trajectory.orderedTracks.length - 1];
+                        if (firstCalm) onTogglePlay(firstCalm);
+                      } else if (mode.id === 'upbeat') {
+                        const lively = trajectory.orderedTracks
+                          .filter((t) => t.bpm >= 90 || t.energy >= 6 || t.phase === 1)
+                          .sort((a, b) => b.bpm - a.bpm);
+                        const firstUpbeat = lively[0] || trajectory.orderedTracks[0];
+                        if (firstUpbeat) onTogglePlay(firstUpbeat);
+                      }
+                    }}
+                    className={`min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs sm:text-sm border-2 transition flex items-center gap-1.5 ${
                       isSelected
-                        ? 'bg-wildwoods-slate text-wildwoods-cream border-wildwoods-amber shadow-md'
-                        : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-amber-200/80'
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                        : 'bg-wildwoods-cream hover:bg-wildwoods-parchment text-wildwoods-slate border-wildwoods-sand'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-lg">{item.emoji}</span>
-                      {isSelected && (
-                        <CheckCircle2 className="w-4 h-4 text-wildwoods-gold shrink-0" />
-                      )}
-                    </div>
-                    <div className="font-bold text-xs sm:text-sm mt-1 leading-tight">
-                      {item.label}
-                    </div>
-                    <div
-                      className={`text-[11px] mt-0.5 ${
-                        isSelected ? 'text-wildwoods-mint' : 'text-slate-500'
-                      }`}
-                    >
-                      {item.sublabel}
-                    </div>
+                    <span>{mode.label}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-200 shrink-0" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Center Directional Arrow */}
-          <div className="lg:col-span-1 flex flex-row lg:flex-col items-center justify-center py-1 lg:py-0">
-            <div className="w-10 h-10 rounded-full bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow-md border-2 border-wildwoods-slate">
-              <ArrowRight className="w-5 h-5 stroke-[2.5] rotate-90 lg:rotate-0" />
-            </div>
-          </div>
-
-          {/* Right Half: Mood After Listening (1-Tap Log) */}
-          <div className="lg:col-span-5 bg-emerald-50/50 rounded-2xl p-4 md:p-5 border-2 border-emerald-200/90 flex flex-col justify-between space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm sm:text-base font-extrabold text-wildwoods-slate flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-wildwoods-sage text-white text-xs flex items-center justify-center font-bold">
-                  2
-                </span>
-                Mood After Listening
-              </h2>
-              <span className="text-[11px] font-semibold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                1-Tap Save to Log
+          {/* Optional Expand Button for Mood Before & After Check-In */}
+          <div className="shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowMoodCheckIn((prev) => !prev)}
+              className={`min-h-[42px] px-4 py-2 rounded-xl font-bold text-xs sm:text-sm border transition flex items-center gap-2 ${
+                showMoodCheckIn
+                  ? 'bg-wildwoods-slate text-wildwoods-cream border-wildwoods-slate'
+                  : 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300'
+              }`}
+            >
+              <Smile className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                {showMoodCheckIn
+                  ? 'Hide Mood Before / After Check-In'
+                  : 'Optional: Mood Before & After Check-In'}
               </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              {SIMPLE_MOOD_AFTER.map((item) => {
-                const isSelected = selectedAfterMoodId === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleSelectSimpleAfterMood(item)}
-                    className={`min-h-[72px] p-3 rounded-xl border-2 text-left transition flex flex-col justify-center ${
-                      isSelected
-                        ? 'bg-wildwoods-forest text-wildwoods-cream border-emerald-400 shadow-md'
-                        : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-emerald-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-lg">{item.emoji}</span>
-                      {isSelected && (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      )}
-                    </div>
-                    <div className="font-bold text-xs sm:text-sm mt-1 leading-tight">
-                      {item.label}
-                    </div>
-                    <div
-                      className={`text-[11px] mt-0.5 ${
-                        isSelected ? 'text-emerald-200' : 'text-slate-500'
-                      }`}
-                    >
-                      {isSelected ? 'Saved!' : 'Tap to record'}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+              {showMoodCheckIn ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Expandable Mood Before -> Mood After Drawer */}
+        {showMoodCheckIn && (
+          <div className="pt-3 border-t border-wildwoods-parchment grid grid-cols-1 lg:grid-cols-11 gap-4 items-stretch">
+            {/* Left Half: Mood Before Music */}
+            <div className="lg:col-span-5 bg-amber-50/50 rounded-2xl p-4 md:p-5 border-2 border-amber-200/90 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm sm:text-base font-extrabold text-wildwoods-slate flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
+                    1
+                  </span>
+                  Mood Before Music
+                </h2>
+                <span className="text-[11px] font-semibold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                  Auto-Tunes Playlist Arc
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {SIMPLE_MOOD_BEFORE.map((item) => {
+                  const isSelected = currentStateId === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setPlaylistFilterMode('arc');
+                        handleSelectSimpleBeforeMood(item);
+                      }}
+                      className={`min-h-[72px] p-3 rounded-xl border-2 text-left transition flex flex-col justify-center ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-950 border-emerald-600 shadow-sm'
+                          : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-amber-200/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-lg">{item.emoji}</span>
+                        {isSelected && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
+                            ✓ Active
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-bold text-xs sm:text-sm mt-1 leading-tight">
+                        {item.label}
+                      </div>
+                      <div
+                        className={`text-[11px] mt-0.5 ${
+                          isSelected ? 'text-emerald-800 font-medium' : 'text-slate-500'
+                        }`}
+                      >
+                        {item.sublabel}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Center Directional Arrow */}
+            <div className="lg:col-span-1 flex flex-row lg:flex-col items-center justify-center py-1 lg:py-0">
+              <div className="w-10 h-10 rounded-full bg-wildwoods-amber text-wildwoods-slate flex items-center justify-center shadow-md border-2 border-wildwoods-slate">
+                <ArrowRight className="w-5 h-5 stroke-[2.5] rotate-90 lg:rotate-0" />
+              </div>
+            </div>
+
+            {/* Right Half: Mood After Listening (1-Tap Log) */}
+            <div className="lg:col-span-5 bg-emerald-50/50 rounded-2xl p-4 md:p-5 border-2 border-emerald-200/90 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm sm:text-base font-extrabold text-wildwoods-slate flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-wildwoods-sage text-white text-xs flex items-center justify-center font-bold">
+                    2
+                  </span>
+                  Mood After Listening
+                </h2>
+                <span className="text-[11px] font-semibold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                  1-Tap Save to Log
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {SIMPLE_MOOD_AFTER.map((item) => {
+                  const isSelected = selectedAfterMoodId === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectSimpleAfterMood(item)}
+                      className={`min-h-[72px] p-3 rounded-xl border-2 text-left transition flex flex-col justify-center ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-950 border-emerald-600 shadow-sm'
+                          : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-emerald-200/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-lg">{item.emoji}</span>
+                        {isSelected && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
+                            ✓ Saved
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-bold text-xs sm:text-sm mt-1 leading-tight">
+                        {item.label}
+                      </div>
+                      <div
+                        className={`text-[11px] mt-0.5 ${
+                          isSelected ? 'text-emerald-800 font-medium' : 'text-slate-500'
+                        }`}
+                      >
+                        {isSelected ? 'Saved!' : 'Tap to record'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 3. Main Everyday Jukebox Player & Clean Song Queue */}
@@ -1208,10 +1352,16 @@ export default function IsoJukeboxView({
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-wildwoods-parchment pb-3">
             <div>
               <h2 className="text-xl font-serif font-bold text-wildwoods-slate">
-                {patient.preferredName}’s Playlist ({trajectory.orderedTracks.length} Songs)
+                {patient.preferredName}’s Playlist ({displayedTracks.length} Songs)
               </h2>
               <p className="text-xs text-slate-500">
-                A living playlist — add new songs or family memories anytime
+                {playlistFilterMode === 'relaxing'
+                  ? '🌙 Showing relaxing & peaceful songs only'
+                  : playlistFilterMode === 'upbeat'
+                  ? '☀️ Showing upbeat & cheerful songs only'
+                  : playlistFilterMode === 'arc'
+                  ? '🌊 Ordered from starting mood down to calm'
+                  : 'A living playlist — add new songs or family memories anytime'}
               </p>
             </div>
 
@@ -1242,7 +1392,7 @@ export default function IsoJukeboxView({
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
-                    Add Song / Memory
+                    Add Songs / Memory
                   </>
                 )}
               </button>
@@ -1268,8 +1418,13 @@ export default function IsoJukeboxView({
           {/* Inline Quick-Add Song & Memory Drawer right inside the simple Jukebox */}
           {showQuickAdd && (
             <div className="p-4 rounded-2xl bg-wildwoods-cream border-2 border-wildwoods-amber space-y-3">
-              <div className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-slate">
-                Quick-Add a Song &amp; Family Memory to {patient.preferredName}’s Jukebox
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-slate">
+                  Preview &amp; Add Songs to {patient.preferredName}’s Jukebox
+                </div>
+                <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Tap ▶️ to preview • Tap + Add on multiple songs
+                </span>
               </div>
 
               <form onSubmit={handleQuickSearch} className="flex gap-2">
@@ -1316,7 +1471,7 @@ export default function IsoJukeboxView({
                       onClick={() => setQuickVibe(v.id)}
                       className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border ${
                         quickVibe === v.id
-                          ? 'bg-wildwoods-slate text-wildwoods-gold border-wildwoods-slate'
+                          ? 'bg-emerald-700 text-white border-emerald-700'
                           : 'bg-white text-slate-600 border-wildwoods-sand'
                       }`}
                     >
@@ -1327,37 +1482,89 @@ export default function IsoJukeboxView({
               </div>
 
               {quickSearchResults.length > 0 && (
-                <div className="space-y-1.5 max-h-[210px] overflow-y-auto pt-1">
-                  {quickSearchResults.map((cand) => (
-                    <div
-                      key={cand.trackId}
-                      className="p-2.5 rounded-xl bg-white border border-wildwoods-sand flex items-center justify-between gap-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-bold text-xs text-wildwoods-slate truncate">
-                          {cand.title}
-                        </div>
-                        <div className="text-[11px] text-slate-500 truncate">
-                          {cand.artist} ({cand.year})
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAddTrack(cand)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shrink-0"
+                <div className="space-y-1.5 max-h-[240px] overflow-y-auto pt-1">
+                  {quickSearchResults.map((cand) => {
+                    const isAlreadyInPlaylist = trajectory.orderedTracks.some(
+                      (t) =>
+                        t.id === cand.trackId ||
+                        (t.title.toLowerCase() === cand.title.toLowerCase() &&
+                          t.artist.toLowerCase() === cand.artist.toLowerCase())
+                    );
+                    const isPreviewing = quickPreviewTrackId === cand.trackId;
+                    return (
+                      <div
+                        key={cand.trackId}
+                        className={`p-2.5 rounded-xl border-2 flex items-center justify-between gap-2 transition ${
+                          isAlreadyInPlaylist
+                            ? 'bg-emerald-50 border-emerald-500'
+                            : 'bg-white border-wildwoods-sand'
+                        }`}
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        Add
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleQuickPreview(cand)}
+                            aria-label={`Preview ${cand.title}`}
+                            title="Listen to 30-second song preview"
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition ${
+                              isPreviewing
+                                ? 'bg-wildwoods-amber text-wildwoods-slate shadow'
+                                : 'bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-cream'
+                            }`}
+                          >
+                            {isPreviewing ? (
+                              <Pause className="w-3.5 h-3.5" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs text-wildwoods-slate truncate">
+                              {cand.title}
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate">
+                              {cand.artist} ({cand.year})
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isAlreadyInPlaylist) {
+                              handleQuickAddTrack(cand);
+                            }
+                          }}
+                          disabled={isAlreadyInPlaylist}
+                          className={`px-3 py-1.5 rounded-lg font-extrabold text-xs flex items-center gap-1 shrink-0 transition ${
+                            isAlreadyInPlaylist
+                              ? 'bg-emerald-600 text-white cursor-default'
+                              : 'bg-white hover:bg-emerald-50 text-emerald-800 border-2 border-emerald-600'
+                          }`}
+                        >
+                          {isAlreadyInPlaylist ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              Added
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                              Add Song
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
 
           <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
-            {trajectory.orderedTracks.map((track, idx) => {
+            {displayedTracks.map((track, idx) => {
               const isTrackActive = currentTrack?.id === track.id;
               return (
                 <div
@@ -1425,14 +1632,24 @@ export default function IsoJukeboxView({
                       </button>
                       <span
                         className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg ${
-                          track.phase === 1
+                          track.bpm <= 82 || track.energy <= 4 || track.phase === 3
+                            ? 'bg-emerald-100 text-emerald-900'
+                            : track.bpm >= 98 || track.energy >= 7 || track.phase === 1
                             ? 'bg-amber-100 text-amber-900'
-                            : track.phase === 2
-                            ? 'bg-teal-100 text-teal-900'
-                            : 'bg-emerald-100 text-emerald-900'
+                            : 'bg-teal-100 text-teal-900'
                         }`}
                       >
-                        {track.phase === 1 ? 'Match' : track.phase === 2 ? 'Bridge' : 'Calm'}
+                        {playlistFilterMode === 'arc'
+                          ? track.phase === 1
+                            ? 'Match'
+                            : track.phase === 2
+                            ? 'Bridge'
+                            : 'Calm'
+                          : track.bpm <= 82 || track.energy <= 4
+                          ? 'Relaxing'
+                          : track.bpm >= 98 || track.energy >= 7
+                          ? 'Upbeat'
+                          : 'Warm'}
                       </span>
                     </div>
                   </div>
