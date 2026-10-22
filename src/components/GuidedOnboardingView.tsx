@@ -26,6 +26,7 @@ import {
   GuidedInterviewAnswers,
   SAMPLE_INTERVIEW_PERSONAS,
   SIMPLE_GENRE_OPTIONS,
+  buildSeedQueriesForSelections,
   synthesizeInterviewIntoJukebox,
 } from '@/lib/onboarding-interview';
 import {
@@ -66,21 +67,29 @@ interface GuidedOnboardingViewProps {
   }) => void;
 }
 
+function computeDefaultDecadesForBirthYear(birthYear: number): string[] {
+  const rawStartDecade = Math.floor((birthYear + 12) / 10) * 10;
+  const clampDecade = (d: number) => Math.max(1940, Math.min(2010, d));
+  const d1 = `decade_${clampDecade(rawStartDecade)}s`;
+  const d2 = `decade_${clampDecade(rawStartDecade + 10)}s`;
+  return Array.from(new Set([d1, d2]));
+}
+
 const BLANK_FAMILY_ANSWERS: GuidedInterviewAnswers = {
   fullName: '',
   preferredName: '',
-  birthYear: 1945,
+  birthYear: 1965,
   hometown: '',
   formerOccupation: '',
   culturalUpbringing: '',
-  youthStyles: ['rock_n_roll_jukebox'],
+  youthStyles: [],
   youthFavoriteArtistOrSong: '',
   youthDanceMemory: '',
   spouseOrCompanionName: '',
   courtshipSongOrArtist: '',
   courtshipMemoryStory: '',
-  vocalPreference: 'solo_crooners',
-  sanctuaryStyles: ['velvet_crooner_ballads'],
+  vocalPreference: 'mixed_favorites',
+  sanctuaryStyles: [],
   sanctuarySpecificSong: '',
   sanctuaryMemoryPrompt: '',
   redFlagSongsOrArtists: '',
@@ -90,7 +99,7 @@ const BLANK_FAMILY_ANSWERS: GuidedInterviewAnswers = {
   sundowningPeakTime: '16:30',
   initialCurrentState: 'agitated_sundowning',
   initialTargetState: 'deep_calm',
-  selectedDecades: ['decade_1950s', 'decade_1960s'],
+  selectedDecades: [],
   handPickedTracks: [],
 };
 
@@ -107,19 +116,23 @@ export default function GuidedOnboardingView({
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(false);
   const [showExtraDetails, setShowExtraDetails] = useState<boolean>(false);
   const [activePersonaId, setActivePersonaId] = useState<string>(
-    isCustomProfile ? 'custom-saved' : startBlank ? 'custom-blank' : 'eleanor-1938'
+    isCustomProfile ? 'custom-saved' : startBlank ? 'custom-blank' : 'custom-blank'
   );
 
   const [answers, setAnswers] = useState<GuidedInterviewAnswers>(() => {
-    if (initialSavedAnswers) {
+    const isStaleDemoAnswers =
+      !isCustomProfile &&
+      initialSavedAnswers?.youthFavoriteArtistOrSong === 'Glenn Miller In the Mood';
+    if (initialSavedAnswers && !startBlank && !isStaleDemoAnswers) {
+      const yr = initialSavedAnswers.birthYear || existingPatient?.birthYear || 1965;
       return {
         ...BLANK_FAMILY_ANSWERS,
         ...initialSavedAnswers,
         fullName: initialSavedAnswers.fullName || existingPatient?.name || '',
         preferredName:
           initialSavedAnswers.preferredName || existingPatient?.preferredName || '',
-        birthYear: initialSavedAnswers.birthYear || existingPatient?.birthYear || 1945,
-        selectedDecades: initialSavedAnswers.selectedDecades || ['decade_1950s', 'decade_1960s'],
+        birthYear: yr,
+        selectedDecades: initialSavedAnswers.selectedDecades || [],
         handPickedTracks: initialSavedAnswers.handPickedTracks || [],
       };
     }
@@ -135,13 +148,7 @@ export default function GuidedOnboardingView({
         sundowningPeakTime: existingPatient.sundowningPeakTime,
       };
     }
-    return startBlank
-      ? BLANK_FAMILY_ANSWERS
-      : {
-          ...SAMPLE_INTERVIEW_PERSONAS[0].answers,
-          selectedDecades: ['decade_1950s', 'decade_1960s'],
-          handPickedTracks: [],
-        };
+    return BLANK_FAMILY_ANSWERS;
   });
 
   const [isSynthesizing, setIsSynthesizing] = useState<boolean>(false);
@@ -219,31 +226,21 @@ export default function GuidedOnboardingView({
     const loadStep3SongChecklist = async () => {
       setIsLoadingSuggestions(true);
       try {
-        const selectedGenreIds = [...answers.youthStyles, ...answers.sanctuaryStyles];
-        const genreSeeds = SIMPLE_GENRE_OPTIONS.filter((g) =>
-          selectedGenreIds.includes(g.id)
-        ).map((g) => g.searchSeed);
-
-        const decadeSeeds = DECADE_GUESS_OPTIONS.filter((d) =>
-          (answers.selectedDecades || []).includes(d.id)
-        ).map((d) => d.searchSeed);
-
-        const queries = [
-          ...genreSeeds.slice(0, 2),
-          ...decadeSeeds.slice(0, 2),
-          `${bump.bumpStart + 5} greatest hits`,
-        ].filter(Boolean);
+        const queries = buildSeedQueriesForSelections(answers).slice(0, 12);
+        const batches = await Promise.all(
+          queries.map((q) => searchItunesTracks(q, 2))
+        );
 
         const merged: ItunesCandidateTrack[] = [];
         const seen = new Set<string>();
 
-        for (const q of queries.slice(0, 3)) {
-          const batch = await searchItunesTracks(q, 5);
+        for (const batch of batches) {
           for (const item of batch) {
             const key = `${item.title.toLowerCase()}::${item.artist.toLowerCase()}`;
             if (!seen.has(key)) {
               seen.add(key);
               merged.push(item);
+              break; // Take the #1 match for each individual song query so every artist is represented
             }
           }
         }
@@ -261,7 +258,7 @@ export default function GuidedOnboardingView({
     return () => {
       cancelled = true;
     };
-  }, [step, answers.youthStyles, answers.sanctuaryStyles, answers.selectedDecades, bump.bumpStart]);
+  }, [step, answers.youthStyles, answers.sanctuaryStyles, answers.selectedDecades, answers.birthYear]);
 
   const handleToggleSeedAudioSample = async (
     id: string,
@@ -378,6 +375,8 @@ export default function GuidedOnboardingView({
         itunesQuery: `${cand.artist} ${cand.title}`,
         previewUrl: cand.previewUrl,
         artworkUrl: cand.artworkUrl,
+        appleMusicUrl: cand.appleMusicUrl,
+        appleTrackId: cand.appleTrackId,
         epochLabel: getTrackEpochLabel(cand.year, answers.birthYear),
       };
       nextPicked = [newTrack, ...currentPicked];
@@ -428,7 +427,7 @@ export default function GuidedOnboardingView({
       setActivePersonaId(found.id);
       updateAnswersAndSync({
         ...found.answers,
-        selectedDecades: ['decade_1950s', 'decade_1960s'],
+        selectedDecades: computeDefaultDecadesForBirthYear(found.answers.birthYear),
         handPickedTracks: [],
       });
       setShowSampleLoader(false);

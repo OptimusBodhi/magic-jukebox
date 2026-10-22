@@ -122,15 +122,28 @@ export async function searchItunesTracks(
     const results: RawItunesItem[] = Array.isArray(data?.results) ? data.results : [];
 
     // Guardrail #2: Never Render Silent Cards — strictly filter for valid https previewUrl
-    return results
-      .filter(
-        (item) =>
-          typeof item.previewUrl === 'string' &&
-          item.previewUrl.startsWith('http') &&
-          item.trackName &&
-          item.artistName
-      )
-      .map((item) => {
+    // Also filter out karaoke, lullaby, or tribute cover bands so authentic recordings appear first.
+    const JUNK_PATTERNS =
+      /karaoke|tribute|lullaby|twinkle twinkle|made famous|originally performed|in the style of|8-bit|ringtone|instrumental version/i;
+
+    const validItems = results.filter(
+      (item) =>
+        typeof item.previewUrl === 'string' &&
+        item.previewUrl.startsWith('http') &&
+        item.trackName &&
+        item.artistName
+    );
+
+    const authenticItems = validItems.filter(
+      (item) =>
+        !JUNK_PATTERNS.test(item.artistName || '') &&
+        !JUNK_PATTERNS.test(item.trackName || '') &&
+        !JUNK_PATTERNS.test(item.collectionName || '')
+    );
+
+    const finalItems = authenticItems.length > 0 ? authenticItems : validItems;
+
+    return finalItems.map((item) => {
         const yearMatch = item.releaseDate ? parseInt(item.releaseDate.slice(0, 4), 10) : 1962;
         const year = !Number.isNaN(yearMatch) ? yearMatch : 1962;
         const artworkUrl = item.artworkUrl100

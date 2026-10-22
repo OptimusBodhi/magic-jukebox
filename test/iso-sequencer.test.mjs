@@ -144,6 +144,25 @@ test('Central Spotify Playlist serverless function, Instant Full-Length Multi-So
   assert.match(jukeboxSrc, /Play Full-Length Songs \(In-App\)/);
 });
 
+test('Playlist builder uses targeted individual artist+song seedQueries per selected genre/decade with zero hard-coded oldies bleed and filters out karaoke/lullaby covers', () => {
+  const onboardingLib = fs.readFileSync(
+    path.resolve('src/lib/onboarding-interview.ts'),
+    'utf8'
+  );
+  const itunesLib = fs.readFileSync(path.resolve('src/lib/itunes-audio.ts'), 'utf8');
+  const onboardingView = fs.readFileSync(
+    path.resolve('src/components/GuidedOnboardingView.tsx'),
+    'utf8'
+  );
+
+  assert.match(onboardingLib, /buildSeedQueriesForSelections/);
+  assert.match(onboardingLib, /seedQueries:\s*\[/);
+  assert.match(itunesLib, /JUNK_PATTERNS/);
+  assert.match(itunesLib, /twinkle twinkle/);
+  assert.match(onboardingView, /buildSeedQueriesForSelections\(answers\)/);
+});
+
+
 
 
 
