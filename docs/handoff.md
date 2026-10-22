@@ -1,27 +1,34 @@
 # Agent Handoff & Architecture Guide — The Magic Jukebox
 
-**Last Updated**: 2026-10-21  
+**Last Updated**: 2026-10-22  
+**North Star Charter**: [`docs/NORTH_STAR_CHARTER.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/docs/NORTH_STAR_CHARTER.md)  
 **GitHub Repository (Netlify Connected)**: `https://github.com/OptimusBodhi/magicjukebox.git` (`main` and `master` branches synced)  
 **Secondary Mirror**: `https://github.com/OptimusBodhi/magic-jukebox.git`  
-**Build & Test Verification**: `npm test` (6/6 passing) • `npm run build` (Next.js static export to `out/`)
+**Build & Test Verification**: `npm test` (7/7 passing) • `npm run build` (Next.js static export to `out/`)
 
 ---
 
-## 1. Mission & Clinical Foundation
+## 1. Mission, North Star Positioning & Scientific Foundation
 
-**The Magic Jukebox** (developed in partnership with **Studio Wildwoods**) is a precision music medicine web platform for Alzheimer's disease and related dementias. It bridges the gap between clinical neuroscience and frictionless family/caregiver UX by uniting four clinical mechanisms:
+**The Magic Jukebox** (developed in partnership with **Studio Wildwoods**) is an **evidence-informed personalized music sequencing, rhythmic pace-matching, caregiver support, and observational EHR documentation platform**.
 
+### Gatekeeper Safe-Harbor & Collaborative Scope ([`docs/NORTH_STAR_CHARTER.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/docs/NORTH_STAR_CHARTER.md))
+- **What We Are:** A personalized therapeutic music sequencing, pace-matching, and caregiver support tool that formats caregiver-reported session observations into standardized **HL7 FHIR R4 (`intent: 'plan'`)** summaries to share with healthcare providers and **Board-Certified Music Therapists (MT-BCs)**.
+- **What We Are Not:** We are **not** a standalone clinical treatment or regulated medical device (SaMD), and we never claim to diagnose, treat, prescribe, or replace clinicians or medications.
+- **Modular Specialty Architecture:** One shared core audio/sequencing/EHR engine powering three focused specialty tracks:
+  1. **Memory & Cognitive Care (Dementia, Alzheimer’s & Afternoon Restlessness)** — *Reminiscence Bump (Ages 10–30) + Mood-to-Calm Arc + Family Memory Prompts.*
+  2. **Movement, Gait & Pace Support (Parkinson’s & Motor Rhythm)** — *Pitch-Locked Tempo Matcher (`0.65x–1.35x`) + Gradual Speed-Up + Beat Pulse Cue (RAS).*
+  3. **Calm, Routine & Provider Documentation Support** — *1-tap "Just Relaxing & Peaceful" playlists + Caregiver Observation Log & HL7 FHIR R4 Provider Summary.*
+
+### Four Core Evidence Mechanisms
 1. **Neuroanatomical Preservation (Jacobsen et al., 2015, *Brain*; King et al., 2019)**:
-   - Long-term musical memory from the **Ages 10–30 Reminiscence Bump** is encoded in the **caudal anterior cingulate cortex (cACC)** (affective salience) and **ventral pre-supplementary motor area (ventral pre-SMA)** (rhythmic motor/vocal entrainment), which resist cortical atrophy and glucose hypometabolism in Alzheimer's disease and project into the **Default Mode Network (DMN)** to restore lucidity.
-2. **The Clinical Iso-Principle (`NCT04236557` & `JAMDA` 2018 Meta-Analysis)**:
-   - Sequences personalized tracks across a 30-minute, 3-phase trajectory:
-     - **Phase 1: State Match (Minutes 0–7)** — Matches current sympathetic arousal (`110–125 BPM` for agitation/sundowning) or depressive withdrawal (`65–75 BPM` for apathy) to prevent sensory rejection.
-     - **Phase 2: Acoustic Modulation Bridge (Minutes 8–18)** — Smoothly interpolates tempo and rhythmic density along a controlled slope.
-     - **Phase 3: Target Therapeutic Resolution (Minutes 19–30)** — Settles into target acoustic parameters (`60–68 BPM` Major mode for parasympathetic calm; `75–92 BPM` for DMN lucidity; `105–120 BPM` for uplifted sing-along joy).
-3. **Gerdner's Individualized Music Intervention for Agitation (IMIA / PLST Model)**:
-   - Eliminates generic unfamiliar relaxation tracks; schedules proactive playback **30 minutes prior** to peak sundowning vulnerability; enforces instant **Red Flag Quarantine** for bereavement or distress triggers.
-4. **Dual-Mode Playback (Särkämö et al., 2014/2016 Dyad RCT)**:
-   - Switches between **Receptive Calm Mode** (zero executive demand + 30-min timer + lockable *Patient Safe View*) and **Caregiver Duet & Story Mode** (large-print chorus lyrics + family *Memory Mirror* stories + conversational prompts).
+   - Long-term musical memory from the **Ages 10–30 Reminiscence Bump** is encoded in the **caudal anterior cingulate cortex (cACC)** (affective salience) and **ventral pre-supplementary motor area (ventral pre-SMA)** (rhythmic motor/vocal entrainment), which resist cortical atrophy in Alzheimer’s disease and project into the **Default Mode Network (DMN)** to support connection and lucidity.
+2. **Flexible Vibe Modes + The Iso-Principle (`NCT04236557` & `JAMDA` 2018 Meta-Analysis)**:
+   - Supports direct 1-tap listening modes (`🎵 Play All Songs`, `🌙 Just Relaxing & Peaceful`, `☀️ Just Upbeat & Cheerful`) alongside the 3-phase **Gradual Mood-to-Calm Arc** (*Phase 1: State Match [0–7m]* $\rightarrow$ *Phase 2: Bridge [8–18m]* $\rightarrow$ *Phase 3: Calm Resolution [19–30m]*).
+3. **Gerdner’s Individualized Music Guidelines (IMIA / PLST Model)**:
+   - Prioritizes familiar personal music over generic tracks; supports a proactive listening schedule **30 minutes prior** to typical late-afternoon restlessness; enforces instant **Skip & Never Play Again** filtering for disliked or distressing songs.
+4. **Pitch-Preserving Pace Matching & Dual-Mode Playback (Thaut RAS & Särkämö Dyad RCT)**:
+   - Locks original vocal pitch and key (`preservesPitch = true`) while adjusting tempo from `65%` to `135%` with gradual speed-up/slow-down ramping for Parkinson’s gait/pace support, and switches between **Relax & Listen** and **Sing-Along & Family Story** modes.
 
 ---
 
@@ -29,43 +36,16 @@
 
 | File Path | Responsibility |
 | :--- | :--- |
-| [`.agents/CONTEXT.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/.agents/CONTEXT.md) | System-wide clinical, accessibility, and aesthetic guardrails. |
-| [`.agents/skills/iso-sequencer/SKILL.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/.agents/skills/iso-sequencer/SKILL.md) | Declarative skill encoding the Reminiscence Bump (Epochs 1–3), 3-Phase Iso-Principle math, and BARS (1–7) telemetry. |
-| [`src/app/page.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/app/page.tsx) | Master application state, HTML5 Audio + Web Audio API harmonic fallback controller, `?share=...` URL hydration, `LocalStorage` persistence, top navigation bar, and bottom Studio Wildwoods partnership footer. |
-| [`src/components/LandingHomeView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/LandingHomeView.tsx) | Default `Start Here` landing page. Clean, low-word-count entry that clearly separates **Create Your Own (Easy Family Setup)** from **Explore Interactive Demo (Arthur Pendelton, Age 82)**, provides a 1-click button to launch the **4-Step Visual Tutorial**, and explains current pilot availability. |
-| [`src/components/SimpleTutorialModal.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/SimpleTutorialModal.tsx) | **Beginner-Friendly 4-Step Visual Tutorial Modal (`How It Works`)**: Accessible from the top header, `Start Here` hero, Playlist Builder, and Jukebox Player. Guides non-technical users through building a playlist, playing music & tapping moods, adding songs/memories, and using the speed/pace matcher. |
-| [`src/components/GuidedOnboardingView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/GuidedOnboardingView.tsx) | **60-Second 3-Step Express Playlist Builder & 6-Question Story Setup**. Opens in **Express Mode** by default (Name & Birth Year $\rightarrow$ Tap Music Styles with live **`🔊 Hear Sample`** audio previews $\rightarrow$ Optional Favorite Song/Memory & Instant Build). Also includes the full **6-Step Story Setup** in plain-English family language (with an optional `Show Clinical Science Notes` toggle) plus 3 sample personas. |
-| [`src/components/IsoJukeboxView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/IsoJukeboxView.tsx) | **The Personal Jukebox Player**: Opens with a simple, warm, non-clinical everyday interface featuring a 1-tap **Mood Before Music → Mood After Listening** check-in bar, a clean Vinyl Player with inline **`✏️ Edit / Add Memory`**, a **Pitch-Preserving Tempo & Pace Matcher** (`preservesPitch = true`, **Gradual Speed-Up for Parkinson's / Gait Pacing**, **Gradual Slow-Down**, and **RAS Beat Pulse Cue**), and a living Playlist Queue with an inline **`+ Add Song / Memory`** drawer. Includes an expandable **Advanced Emotional Transformation Sequencer, BPM Slope & Clinical Controls** drawer at the bottom. |
-| [`src/components/MusicDetectiveView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/MusicDetectiveView.tsx) | **Song Finder / Co-Curation Studio**: Dynamic birth-year Reminiscence Bump calculator, live iTunes Search API audio discovery (strictly filtered for non-empty `previewUrl`), tactile reaction triage (*Spark*, *Skip*, *Red Flag*), and Red Flag Quarantine Vault. |
-| [`src/components/ClinicalTelemetryView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/ClinicalTelemetryView.tsx) | **Care Log, Sundowning Shield & Epic / HL7 FHIR R4 Preview**: 5-second Pre/Post BARS (1–7) check-in widget, Gerdner 30-minute proactive sundowning scheduler, 6-week longitudinal chart, and an interactive **Epic Nursing Flowsheet & HL7 FHIR R4 Bundle JSON** viewer (`SNOMED CT 410260000`, `ICD-10-CM F03.911`, `LOINC 72170-4`). |
-| [`src/lib/fhir-epic-adapter.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/fhir-epic-adapter.ts) | Standardized **HL7 FHIR R4 / Epic App Orchard (SMART on FHIR)** adapter generating `Patient`, `CarePlan`, `Flag` (Red Flag Contraindications), and `Observation` (BARS & PRN sparing) resources. |
-| [`src/components/ClinicalEvidenceVaultView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/ClinicalEvidenceVaultView.tsx) | **Clinical Science Vault**: Interactive Jacobsen et al. (2015) neuroanatomy breakdown (`cACC`, `ventral pre-SMA`, `DMN`), peer-reviewed study matrix, and UK competitive audit (*Playlist for Life*, *BBC Music Memories*, *m4d Radio*, *Vera*, *MediMusic*). |
-| [`src/lib/iso-sequencer.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/iso-sequencer.ts) | Core Reminiscence Bump & 3-Phase Iso-Principle sequencing engine + Arthur Pendelton seed data. |
-| [`src/lib/onboarding-interview.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/onboarding-interview.ts) | Synthesizes the 6-Step Guided Interview answers into a live iTunes-hydrated 3-phase Jukebox. |
-| [`src/lib/itunes-audio.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/itunes-audio.ts) | Public iTunes Search API client (`https://itunes.apple.com/search`) with Zero Silent Cards filtering and acoustic inference. |
-| [`src/lib/share-and-export.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/share-and-export.ts) | Self-contained `?share=...` URL encoder/decoder, 1-click full-song streaming URL builder, Spotify/CSV/M3U playlist exporters, and Caregiver Bedside Prescription formatter. |
-| [`src/lib/spotify-export.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/spotify-export.ts) & [`src/components/FullLengthExportModal.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/FullLengthExportModal.tsx) | **Full-Length Playlist & Spotify PKCE Exporter**: Exports the active mood-sequenced Iso-Principle playlist (`Where We Are` $\rightarrow$ `Where We Want To Be`) directly to Spotify via OAuth 2.0 PKCE, copies ordered tracklists, downloads `.CSV`/`.M3U` files, and lets users attach local full-length MP3/M4A files for pitch-locked tempo adjustment. |
-| [`test/iso-sequencer.test.mjs`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/test/iso-sequencer.test.mjs) | Node test runner suite (`npm test`) verifying guardrails, live iTunes API streams, Guided Onboarding, and URL sharing utilities. |
-
----
-
-## 3. UI & Branding Guardrails to Preserve
-
-1. **Studio Wildwoods Attribution Placement**:
-   - Keep the Studio Wildwoods credit at the very bottom footer of [`src/app/page.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/app/page.tsx): *"This Magic Jukebox is being developed in partnership with Studio Wildwoods."* Do not clutter upper headers with Studio Wildwoods text.
-2. **Clear Demo vs. Custom Family Profile Delineation**:
-   - Always open to the `Start Here` landing page (`activeTab === 'home'`) unless a `?share=...` URL parameter is present.
-   - Clearly badge `Sample Demo Patient (Arthur Pendelton)` vs. `Custom Family Jukebox Profile` (`isCustomProfile`).
-3. **Emotional Compass Delineation**:
-   - Maintain the framed left container (`1. Where We Are Now`), center directional `Iso-Bridge →` arrow column, and framed right container (`2. Where We Want To Be`) in [`IsoJukeboxView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/IsoJukeboxView.tsx).
-
----
-
-## 4. Recommended Next Priorities for Incoming Agent (Phase 2)
-
-1. **Embedded Full-Length Streaming OAuth (Spotify Web Playback SDK & Apple MusicKit JS)**:
-   - Allow families with Spotify Premium or Apple Music to toggle from 30-second iTunes chorus hooks to continuous 30-minute in-browser full-track crossfading.
-2. **Rights-Cleared Acoustic Sanctuary Catalog**:
-   - Integrate an optional hosted library of rights-cleared acoustic guitar/piano/vocal arrangements (60–120 BPM) so care homes without consumer streaming accounts can run continuous 30-minute Iso-Principle arcs offline or online.
-3. **Short-URL Cloud Sync (Supabase / Netlify Blobs)**:
-   - Upgrade the current self-contained `?share=...` base64 URL parameter to an optional short link (`/j/eleanor-7f9a`) so real-time BARS logs and Red Flag quarantines sync automatically across all family and nursing devices.
+| [`docs/NORTH_STAR_CHARTER.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/docs/NORTH_STAR_CHARTER.md) | **Governing North Star Charter**: Codifies modular specialty tracks, FDA/gatekeeper safe-harbor positioning, MT-BC collaboration, and the "Say This, Not That" copy matrix. |
+| [`.agents/CONTEXT.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/.agents/CONTEXT.md) | System-wide UX, positioning, accessibility, and branding guardrails. |
+| [`.agents/skills/iso-sequencer/SKILL.md`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/.agents/skills/iso-sequencer/SKILL.md) | Declarative skill encoding North Star positioning, Reminiscence Bump (Epochs 1–3), Iso-Principle sequencing, and BARS (1–7) observation logging. |
+| [`src/app/page.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/app/page.tsx) | Master application state, HTML5 Audio (`preservesPitch = true`) + Web Audio API controller, `?share=...` URL hydration, `LocalStorage` mount-safe auto-save, unified mobile-fitted top header (`Play Jukebox` + `Menu ▾`), and bottom Studio Wildwoods partnership footer. |
+| [`src/components/LandingHomeView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/LandingHomeView.tsx) | Default `Start Here` landing page. Clean, low-word-count entry with two primary actions (**Build My Playlist** and **Play Jukebox**), a 1-click button for the **4-Step Visual Tutorial**, and a collapsible Caregiver/Song Finder/Provider tools bar. |
+| [`src/components/SimpleTutorialModal.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/SimpleTutorialModal.tsx) | **Mobile-Scaled 4-Step Visual Tutorial Modal (`How to Build & Use`)**: Fits cleanly on mobile phone screens (`overflow-x-hidden`) and guides users through building a playlist, playing music, adding songs/memories, and using the speed/pace matcher. |
+| [`src/components/GuidedOnboardingView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/GuidedOnboardingView.tsx) | **3-Step Playlist Builder**: (1) *Name & Birth Year*, (2) *Genres & Decades (`1940s`–`2020s`)* with unmistakable emerald-green `[✓] Selected` checkboxes, `★ Youth Era` badges, and `🔊 Hear Sample` buttons, and (3) *Pick Specific Songs* featuring an automatic **Suggested Songs Checklist** + live search where users can tap `▶️` to preview and `+ Add Song` / `✓ Added` to check off multiple songs. Auto-saves every change to `LocalStorage`. |
+| [`src/components/IsoJukeboxView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/IsoJukeboxView.tsx) | **The Personal Jukebox Player**: Features 1-tap **Playlist Vibe Mode Pills** (`🎵 Play All Songs`, `🌙 Just Relaxing & Peaceful`, `☀️ Just Upbeat & Cheerful`, `🌊 Gradual Mood-to-Calm Arc`), an **Optional Expandable `Mood Before & After Check-In` Drawer**, inline `Quick Edit Name / Year`, a Vinyl Player with **Pitch-Preserving Tempo & Pace Matcher**, and a living Playlist Queue with an inline **`+ Add Songs / Memory`** drawer (`▶️` preview + multi-song `+ Add Song`). |
+| [`src/components/MusicDetectiveView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/MusicDetectiveView.tsx) | **Song Finder / Co-Curation Studio**: Dynamic birth-year Reminiscence Bump calculator, live iTunes Search API audio discovery, reaction triage, and Skipped/Blocked Songs vault. |
+| [`src/components/ClinicalTelemetryView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/ClinicalTelemetryView.tsx) & [`src/lib/fhir-epic-adapter.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/fhir-epic-adapter.ts) | **Caregiver Observation Log, Afternoon Calm Scheduler & Provider EHR Summary (`HL7 FHIR R4`)**: 5-second Pre/Post BARS (1–7) observation log, Gerdner 30-minute afternoon routine scheduler, and shareable **HL7 FHIR R4 Bundle JSON (`intent: 'plan'`)** for Epic / clinical care teams and MT-BCs. |
+| [`src/components/ClinicalEvidenceVaultView.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/ClinicalEvidenceVaultView.tsx) | **Research & Science Vault**: Includes the **North Star Scope & Provider Collaboration Banner**, interactive Jacobsen et al. (2015) neuroanatomy breakdown (`cACC`, `ventral pre-SMA`, `DMN`), peer-reviewed study matrix, and UK ecosystem comparison. |
+| [`src/lib/spotify-export.ts`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/lib/spotify-export.ts) & [`src/components/FullLengthExportModal.tsx`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/src/components/FullLengthExportModal.tsx) | **Full-Length Playlist & Spotify PKCE Exporter**: Exports the active playlist directly to Spotify via OAuth 2.0 PKCE, copies ordered tracklists, downloads `.CSV`/`.M3U` files, and lets users attach local full-length MP3/M4A files for pitch-locked tempo adjustment. |
+| [`test/iso-sequencer.test.mjs`](file:///d:/Jon%20Brouchoud/Outside%20Collaborations/Magic%20Jukebox/test/iso-sequencer.test.mjs) | Automated test suite (`npm test` — 7/7 passing) verifying guardrails, live iTunes API streams, Guided Onboarding, Spotify/FHIR adapters, pitch-preserving pace matcher, and the North Star Charter. |

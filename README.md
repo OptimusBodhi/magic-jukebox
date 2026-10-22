@@ -1,7 +1,9 @@
 # The Magic Jukebox
-### Precision Music Medicine for Dementia & Emotional Transformation
+### Evidence-Informed Personalized Music Sequencing, Pace Support & Caregiver Documentation
 
-**The Magic Jukebox** (being developed in partnership with **Studio Wildwoods**) unites peer-reviewed dementia neurobiology with an effortless, zero-login web application for families, caregivers, and clinicians.
+**The Magic Jukebox** (being developed in partnership with **Studio Wildwoods**) translates peer-reviewed neuroscience and musicology into an effortless, zero-login web application for individuals, families, caregivers, Board-Certified Music Therapists (MT-BCs), and healthcare teams.
+
+> **North Star Charter:** See [`docs/NORTH_STAR_CHARTER.md`](docs/NORTH_STAR_CHARTER.md) for our modular specialty architecture (*Memory & Cognitive Care*, *Movement & Pace Support*, and *Calm & Restorative Support*) and our collaborative, non-SaMD positioning.
 
 ---
 
