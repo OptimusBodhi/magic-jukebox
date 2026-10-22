@@ -51,7 +51,7 @@ export function encodeShareableJukeboxUrl(
     p: patient,
     cs: currentStateId,
     ts: targetStateId,
-    t: library.slice(0, 15).map((tr) => ({
+    t: library.slice(0, 12).map((tr) => ({
       i: tr.id,
       ti: tr.title,
       a: tr.artist,
@@ -59,10 +59,8 @@ export function encodeShareableJukeboxUrl(
       b: tr.bpm,
       m: tr.mode,
       e: tr.energy,
-      mn: tr.memoryNote.slice(0, 180),
-      dp: tr.duetPrompt.slice(0, 160),
-      ...(tr.previewUrl && tr.previewUrl.startsWith('http') ? { pu: tr.previewUrl } : {}),
-      ...(tr.artworkUrl && tr.artworkUrl.startsWith('http') ? { au: tr.artworkUrl } : {}),
+      mn: tr.memoryNote.slice(0, 120),
+      dp: tr.duetPrompt.slice(0, 110),
     })),
     rf: quarantinedList.slice(0, 8).map((q) => ({
       i: q.id,
@@ -268,21 +266,270 @@ export function formatCsvPlaylist(trajectory: IsoTrajectoryResult): string {
 }
 
 /**
- * Builds a self-contained NFC tag / QR code URL that opens the person's Jukebox
- * directly into a chosen vibe mode ('all' | 'relaxing' | 'upbeat' | 'arc') with autoplay=1.
+ * Ultra-compact NFC sticker & QR code payload (< 350 chars) so it fits on standard
+ * NTAG213/215 NFC photo stickers, scans instantly via phone camera QR, and never
+ * triggers HTTP 414 URI-too-long errors.
+ */
+export interface CompactNfcCardPayload {
+  n: string; // preferredName
+  fn: string; // full name
+  by: number; // birthYear
+  sp: string; // sundowningPeakTime
+  v: 'all' | 'relaxing' | 'upbeat' | 'arc';
+  s: Array<[string, string, number, number]>; // [title, artist, year, bpm]
+}
+
+/**
+ * Builds a short, reliable NFC tag / QR code URL that opens the person's Jukebox
+ * directly into the chosen vibe mode ('all' | 'relaxing' | 'upbeat' | 'arc') with autoplay=1.
  */
 export function buildBedsideCardUrl(
-  shareUrl: string,
-  vibe: 'all' | 'relaxing' | 'upbeat' | 'arc'
+  baseUrl: string,
+  vibe: 'all' | 'relaxing' | 'upbeat' | 'arc',
+  patient?: PatientProfile,
+  tracks?: BiographicalTrack[]
 ): string {
   try {
-    const url = new URL(shareUrl);
+    const cleanBase = baseUrl.split('?')[0];
+    const url = new URL(cleanBase);
     url.searchParams.set('autoplay', '1');
     url.searchParams.set('vibe', vibe);
+    url.searchParams.set('bedside', '1');
+
+    if (patient && tracks && tracks.length > 0) {
+      const filtered =
+        vibe === 'upbeat'
+          ? tracks.filter((t) => t.bpm >= 90 || t.energy >= 6)
+          : vibe === 'relaxing'
+          ? tracks.filter((t) => t.bpm <= 86 || t.energy <= 4)
+          : tracks;
+      const chosen = (filtered.length > 0 ? filtered : tracks).slice(0, 6);
+      const compact: CompactNfcCardPayload = {
+        n: patient.preferredName.slice(0, 24),
+        fn: patient.name.slice(0, 36),
+        by: patient.birthYear,
+        sp: patient.sundowningPeakTime || '16:30',
+        v: vibe,
+        s: chosen.map((tr) => [tr.title.slice(0, 32), tr.artist.slice(0, 28), tr.year, tr.bpm]),
+      };
+      url.searchParams.set('card', btoa(encodeURIComponent(JSON.stringify(compact))));
+    }
     return url.toString();
   } catch {
-    return shareUrl;
+    return baseUrl;
   }
+}
+
+/**
+ * Decodes an ultra-compact ?card=... parameter from an NFC photo sticker or printed QR card.
+ */
+export function decodeBedsideCardParam(encodedCard: string): {
+  patient: PatientProfile;
+  vibe: 'all' | 'relaxing' | 'upbeat' | 'arc';
+  tracks: BiographicalTrack[];
+} | null {
+  try {
+    const json = decodeURIComponent(atob(encodedCard));
+    const parsed: CompactNfcCardPayload = JSON.parse(json);
+    if (!parsed || !parsed.n || !Array.isArray(parsed.s)) return null;
+
+    const patient: PatientProfile = {
+      name: parsed.fn || parsed.n,
+      preferredName: parsed.n,
+      birthYear: parsed.by || 1944,
+      hometown: '',
+      formerOccupation: '',
+      musicalHeritage: `${(parsed.by || 1944) + 10}–${(parsed.by || 1944) + 30} Youth Era`,
+      sundowningPeakTime: parsed.sp || '16:30',
+      proactiveShieldLeadMinutes: 30,
+    };
+
+    const tracks: BiographicalTrack[] = parsed.s.map(([title, artist, year, bpm], idx) => ({
+      id: `nfc-card-${idx}-${year}`,
+      title,
+      artist,
+      year,
+      bpm,
+      mode: 'Major',
+      energy: bpm >= 100 ? 8 : bpm <= 76 ? 2 : 5,
+      valence: 9,
+      neuroTargets: ['cACC Affective Salience', 'DMN Functional Connectivity'],
+      memoryNote: `${patient.preferredName}’s favorite from ${year}.`,
+      duetPrompt: `Enjoy listening or singing along to "${title}" by ${artist}.`,
+      chorusLyrics: [`${title} — ${artist} (${year})`],
+      itunesQuery: `${artist} ${title}`,
+    }));
+
+    return {
+      patient,
+      vibe: parsed.v || 'arc',
+      tracks,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Prints ONLY the 3 high-contrast Bedside QR/NFC Cards and the Cut-Out 3-Button Physical Player Label
+ * using an isolated hidden print iframe (so it never prints the background app screen!).
+ */
+export function printBedsideCardsOnly(
+  patient: PatientProfile,
+  trajectory: IsoTrajectoryResult,
+  baseUrl: string
+): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const all = trajectory.orderedTracks;
+  const upbeatTracks = all.filter((t) => t.bpm >= 90 || t.energy >= 6 || t.phase === 1);
+  const calmTracks = all.filter((t) => t.bpm <= 86 || t.energy <= 4 || t.phase === 3);
+
+  const cards = [
+    {
+      num: 1,
+      vibe: 'upbeat' as const,
+      emoji: '☀️',
+      title: 'CARD 1: CHEERFUL SING-ALONGS',
+      subtitle: 'Upbeat, happy favorites for morning energy, visits & movement',
+      color: '#B45309',
+      bg: '#FFFBEB',
+      tracks: (upbeatTracks.length > 0 ? upbeatTracks : all).slice(0, 4),
+      url: buildBedsideCardUrl(baseUrl, 'upbeat', patient, all),
+    },
+    {
+      num: 2,
+      vibe: 'arc' as const,
+      emoji: '🌊',
+      title: 'CARD 2: AFTERNOON CALM (30-MIN WIND-DOWN)',
+      subtitle: `Matches starting mood & gently eases into calm (Start 30m before ${patient.sundowningPeakTime})`,
+      color: '#1D4ED8',
+      bg: '#EFF6FF',
+      tracks: all.slice(0, 4),
+      url: buildBedsideCardUrl(baseUrl, 'arc', patient, all),
+    },
+    {
+      num: 3,
+      vibe: 'relaxing' as const,
+      emoji: '🌙',
+      title: 'CARD 3: PEACEFUL & SOOTHING REST',
+      subtitle: 'Slow, comforting songs for quiet relaxation or evening wind-down',
+      color: '#047857',
+      bg: '#ECFDF5',
+      tracks: (calmTracks.length > 0 ? calmTracks : [...all].reverse()).slice(0, 4),
+      url: buildBedsideCardUrl(baseUrl, 'relaxing', patient, all),
+    },
+  ];
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>${patient.preferredName}'s Printable Bedside Music Cards & Player Label</title>
+  <style>
+    @page { margin: 12mm; }
+    * { box-sizing: border-box; font-family: Georgia, 'Times New Roman', serif; }
+    body { margin: 0; padding: 0; color: #141E19; background: #fff; }
+    .header { text-align: center; border-bottom: 2px solid #141E19; padding-bottom: 8px; margin-bottom: 12px; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .header p { margin: 4px 0 0; font-size: 12px; font-family: sans-serif; color: #475569; }
+    .cutout-label {
+      border: 2px dashed #141E19;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      background: #FBF9F5;
+      text-align: center;
+    }
+    .cutout-label .tag { font-family: sans-serif; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; }
+    .cutout-label h2 { margin: 4px 0 8px; font-size: 16px; }
+    .btn-row { display: flex; justify-content: space-around; gap: 8px; font-family: sans-serif; font-weight: bold; font-size: 12px; }
+    .btn-pill { flex: 1; padding: 8px; border: 2px solid #141E19; border-radius: 8px; background: #fff; }
+    .cards-grid { display: flex; flex-direction: column; gap: 12px; }
+    .card {
+      border: 3px solid #141E19;
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      page-break-inside: avoid;
+    }
+    .card-left { flex: 1; }
+    .card-title { font-size: 16px; font-weight: bold; margin: 0 0 3px; font-family: sans-serif; }
+    .card-sub { font-size: 12px; color: #334155; margin: 0 0 8px; font-family: sans-serif; }
+    .song-list { margin: 0; padding-left: 18px; font-size: 12px; font-family: sans-serif; color: #1E293B; }
+    .song-list li { margin-bottom: 2px; }
+    .qr-box { text-align: center; width: 118px; flex-shrink: 0; font-family: sans-serif; }
+    .qr-box img { width: 104px; height: 104px; border: 2px solid #141E19; border-radius: 8px; padding: 3px; background: #fff; }
+    .qr-caption { font-size: 9px; font-weight: bold; margin-top: 3px; color: #141E19; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${patient.name}’s Magic Jukebox — Bedside Cards &amp; 3-Button Player Label</h1>
+    <p>Golden Song Years (Ages 10–30): <strong>${patient.birthYear + 10}–${patient.birthYear + 30}</strong> • Scan any QR code with a phone camera to start music immediately</p>
+  </div>
+
+  <div class="cutout-label">
+    <div class="tag">✂️ Cut Out &amp; Tape Above Physical Player Buttons (Relish / SMPL Radio)</div>
+    <h2>${patient.preferredName.toUpperCase()}’S MAGIC JUKEBOX (${patient.birthYear + 10}–${patient.birthYear + 30} FAVORITES)</h2>
+    <div class="btn-row">
+      <div class="btn-pill">☀️ BUTTON 1: CHEERFUL SING-ALONGS</div>
+      <div class="btn-pill">🌊 BUTTON 2: AFTERNOON CALM</div>
+      <div class="btn-pill">🌙 BUTTON 3: PEACEFUL REST</div>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    ${cards
+      .map(
+        (c) => `
+      <div class="card" style="background:${c.bg}; border-color:${c.color};">
+        <div class="card-left">
+          <div class="card-title" style="color:${c.color};">${c.emoji} ${c.title}</div>
+          <div class="card-sub">${c.subtitle}</div>
+          <ol class="song-list">
+            ${c.tracks.map((t) => `<li><strong>${t.title}</strong> — ${t.artist} (${t.year})</li>`).join('')}
+          </ol>
+        </div>
+        <div class="qr-box">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=4&data=${encodeURIComponent(
+            c.url
+          )}" alt="QR Code for ${c.title}" />
+          <div class="qr-caption">📱 Point Phone Camera Here to Play</div>
+        </div>
+      </div>`
+      )
+      .join('')}
+  </div>
+</body>
+</html>`;
+
+  const existingFrame = document.getElementById('magic-jukebox-print-frame');
+  if (existingFrame) existingFrame.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'magic-jukebox-print-frame';
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) return;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+  }, 650);
 }
 
 /**

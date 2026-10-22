@@ -25,12 +25,12 @@ import {
 } from '@/lib/iso-sequencer';
 import {
   buildBedsideCardUrl,
-  encodeShareableJukeboxUrl,
   formatCsvPlaylist,
   formatM3uPlaylist,
   formatPhysicalPlayerUsbGuide,
   formatSpotifyImportTracklist,
   getFullSongStreamingLinks,
+  printBedsideCardsOnly,
 } from '@/lib/share-and-export';
 import {
   createFullLengthSpotifyPlaylist,
@@ -46,6 +46,7 @@ interface FullLengthExportModalProps {
   trajectory: IsoTrajectoryResult;
   onAttachFullAudioFile?: (trackId: string, fileUrl: string, fileName: string) => void;
   onOpenGiantButtonMode?: () => void;
+  onTriggerBedsideCardVibe?: (vibe: 'upbeat' | 'arc' | 'relaxing') => void;
 }
 
 export default function FullLengthExportModal({
@@ -55,6 +56,7 @@ export default function FullLengthExportModal({
   trajectory,
   onAttachFullAudioFile,
   onOpenGiantButtonMode,
+  onTriggerBedsideCardVibe,
 }: FullLengthExportModalProps) {
   const [modalTab, setModalTab] = useState<'streaming' | 'hardware'>('streaming');
   const [copiedTracklist, setCopiedTracklist] = useState(false);
@@ -135,17 +137,16 @@ export default function FullLengthExportModal({
     URL.revokeObjectURL(url);
   };
 
+  const getCardAutoPlayUrl = (vibe: 'upbeat' | 'arc' | 'relaxing') => {
+    const base =
+      typeof window !== 'undefined'
+        ? window.location.origin + window.location.pathname
+        : 'https://magicjukebox.netlify.app/';
+    return buildBedsideCardUrl(base, vibe, patient, orderedTracks);
+  };
+
   const handleCopyNfcLink = async (vibe: 'upbeat' | 'arc' | 'relaxing') => {
-    if (typeof window === 'undefined') return;
-    const baseShare = encodeShareableJukeboxUrl(
-      window.location.origin + window.location.pathname,
-      patient,
-      orderedTracks,
-      [],
-      trajectory.currentState.id,
-      trajectory.targetState.id
-    );
-    const nfcUrl = buildBedsideCardUrl(baseShare, vibe);
+    const nfcUrl = getCardAutoPlayUrl(vibe);
     try {
       await navigator.clipboard.writeText(nfcUrl);
       setCopiedNfcVibe(vibe);
@@ -153,6 +154,14 @@ export default function FullLengthExportModal({
     } catch {
       // Ignore
     }
+  };
+
+  const handlePrintCardsSheetOnly = () => {
+    const base =
+      typeof window !== 'undefined'
+        ? window.location.origin + window.location.pathname
+        : 'https://magicjukebox.netlify.app/';
+    printBedsideCardsOnly(patient, trajectory, base);
   };
 
   const handleDirectSpotifyExport = async () => {
@@ -385,74 +394,102 @@ export default function FullLengthExportModal({
 
                   <button
                     type="button"
-                    onClick={() => window.print()}
-                    className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-wildwoods-parchment hover:bg-wildwoods-sand text-wildwoods-slate border border-wildwoods-sand font-extrabold text-xs flex items-center gap-1.5"
+                    onClick={handlePrintCardsSheetOnly}
+                    className="min-h-[42px] px-4 py-2 rounded-xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition"
                   >
-                    <Printer className="w-3.5 h-3.5" />
-                    Print Cards
+                    <Printer className="w-4 h-4" />
+                    Print Cards &amp; Label Only
                   </button>
                 </div>
 
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Program a $0.40 NFC sticker on the back of a family photo—or print these 3 bedside
-                  cards—so any visiting family member or caregiver can tap to start the right playlist
-                  automatically:
+                  Click <strong>Open &amp; Play Card</strong> below to launch that bedside card right
+                  now, scan the QR code with a phone camera, or click <strong>Copy NFC Link</strong> to
+                  paste onto a $0.40 NFC photo sticker:
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {(
                     [
                       {
                         vibe: 'upbeat',
                         emoji: '☀️',
-                        title: 'Button 1: Cheerful',
+                        title: 'Card 1: Cheerful',
                         desc: 'Upbeat sing-alongs',
                       },
                       {
                         vibe: 'arc',
                         emoji: '🌊',
-                        title: 'Button 2: Calm Arc',
+                        title: 'Card 2: Calm Arc',
                         desc: '30-min mood-to-calm',
                       },
                       {
                         vibe: 'relaxing',
                         emoji: '🌙',
-                        title: 'Button 3: Peaceful',
+                        title: 'Card 3: Peaceful',
                         desc: 'Soothing rest songs',
                       },
                     ] as const
                   ).map((card) => {
                     const isCopied = copiedNfcVibe === card.vibe;
+                    const cardUrl = getCardAutoPlayUrl(card.vibe);
                     return (
                       <div
                         key={card.vibe}
                         className="p-3.5 rounded-2xl bg-wildwoods-cream border-2 border-wildwoods-sand flex flex-col justify-between gap-3"
                       >
-                        <div>
-                          <div className="text-xl">{card.emoji}</div>
-                          <div className="font-extrabold text-xs sm:text-sm text-wildwoods-slate mt-1">
-                            {card.title}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-xl">{card.emoji}</div>
+                            <div className="font-extrabold text-xs sm:text-sm text-wildwoods-slate mt-1">
+                              {card.title}
+                            </div>
+                            <div className="text-[11px] text-slate-600">{card.desc}</div>
                           </div>
-                          <div className="text-[11px] text-slate-600">{card.desc}</div>
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&margin=2&data=${encodeURIComponent(
+                              cardUrl
+                            )}`}
+                            alt={`QR code for ${card.title}`}
+                            className="w-14 h-14 rounded-lg border border-wildwoods-sand bg-white p-0.5 shrink-0"
+                          />
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleCopyNfcLink(card.vibe)}
-                          className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-wildwoods-sand text-wildwoods-slate font-extrabold text-[11px] flex items-center justify-center gap-1 transition"
-                        >
-                          {isCopied ? (
-                            <>
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                              Copied NFC Link!
-                            </>
-                          ) : (
-                            <>
-                              <QrCode className="w-3.5 h-3.5 text-wildwoods-amber" />
-                              Copy Auto-Play Link
-                            </>
-                          )}
-                        </button>
+                        <div className="space-y-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onTriggerBedsideCardVibe) {
+                                onClose();
+                                onTriggerBedsideCardVibe(card.vibe);
+                              } else {
+                                window.location.href = cardUrl;
+                              }
+                            }}
+                            className="w-full py-2 px-2.5 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-gold font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            Open &amp; Play Card
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCopyNfcLink(card.vibe)}
+                            className="w-full py-1.5 px-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-wildwoods-sand text-wildwoods-slate font-bold text-[11px] flex items-center justify-center gap-1 transition"
+                          >
+                            {isCopied ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                                Copied Link!
+                              </>
+                            ) : (
+                              <>
+                                <QrCode className="w-3.5 h-3.5 text-wildwoods-amber" />
+                                Copy NFC Sticker Link
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

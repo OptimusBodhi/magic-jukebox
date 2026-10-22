@@ -35,6 +35,7 @@ import {
 } from '@/lib/iso-sequencer';
 import { hydrateSeedTracksWithItunes } from '@/lib/itunes-audio';
 import {
+  decodeBedsideCardParam,
   decodeShareableJukeboxParam,
   encodeShareableJukeboxUrl,
   formatCaregiverPrescriptionText,
@@ -58,6 +59,8 @@ export default function MagicJukeboxApp() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [feedbackContextPrompt, setFeedbackContextPrompt] = useState<string | null>(null);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
+  const [initialVibeMode, setInitialVibeMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>('all');
+  const [initialBedsideGiantMode, setInitialBedsideGiantMode] = useState<boolean>(false);
   const [patient, setPatient] = useState<PatientProfile>(DEFAULT_PATIENT_PROFILE);
   const [isCustomProfile, setIsCustomProfile] = useState<boolean>(false);
   const [interviewStartBlank, setInterviewStartBlank] = useState<boolean>(false);
@@ -147,9 +150,61 @@ export default function MagicJukeboxApp() {
     let initialTracks = ARTHUR_SEED_TRACKS;
     try {
       const params = new URLSearchParams(window.location.search);
+      const cardParam = params.get('card');
       const sharedParam = params.get('share');
-      const requestedVibe = params.get('vibe');
+      const requestedVibe = params.get('vibe') as 'all' | 'relaxing' | 'upbeat' | 'arc' | null;
       const shouldAutoplay = params.get('autoplay') === '1';
+      const isBedsideUrl = params.get('bedside') === '1';
+
+      if (requestedVibe && ['all', 'relaxing', 'upbeat', 'arc'].includes(requestedVibe)) {
+        setInitialVibeMode(requestedVibe);
+      }
+      if (isBedsideUrl) {
+        setInitialBedsideGiantMode(true);
+      }
+
+      if (cardParam) {
+        const decodedCard = decodeBedsideCardParam(cardParam);
+        if (decodedCard) {
+          setPatient(decodedCard.patient);
+          setIsCustomProfile(true);
+          setInitialVibeMode(decodedCard.vibe);
+          setInitialBedsideGiantMode(true);
+          if (decodedCard.vibe === 'upbeat') {
+            setCurrentStateId('withdrawn_sad');
+            setTargetStateId('sing_along_joy');
+          } else if (decodedCard.vibe === 'relaxing') {
+            setCurrentStateId('anxious_restless');
+            setTargetStateId('deep_calm');
+          } else {
+            setCurrentStateId('agitated_sundowning');
+            setTargetStateId('deep_calm');
+          }
+          if (decodedCard.tracks.length > 0) {
+            initialTracks = decodedCard.tracks;
+            setLibrary(decodedCard.tracks);
+          }
+          setActiveTab('jukebox');
+          setInterviewCompleteBanner(
+            `🪪 Loaded ${decodedCard.patient.preferredName}’s Bedside Card (${decodedCard.vibe.toUpperCase()} Playlist).`
+          );
+          hydrateSeedTracksWithItunes(initialTracks).then((hydrated) => {
+            setLibrary(hydrated);
+            if (shouldAutoplay && hydrated[0]?.previewUrl && audioRef.current) {
+              audioRef.current.src = hydrated[0].previewUrl;
+              audioRef.current
+                .play()
+                .then(() => {
+                  setIsPlaying(true);
+                  setIsGerdnerTimerRunning(true);
+                })
+                .catch(() => {});
+            }
+          });
+          return;
+        }
+      }
+
       if (sharedParam) {
         const decoded = decodeShareableJukeboxParam(sharedParam);
         if (decoded) {
@@ -1068,6 +1123,8 @@ export default function MagicJukeboxApp() {
               setPatient((prev) => ({ ...prev, ...updates }));
               setIsCustomProfile(true);
             }}
+            initialVibeMode={initialVibeMode}
+            initialBedsideGiantMode={initialBedsideGiantMode}
           />
         )}
 

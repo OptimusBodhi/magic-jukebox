@@ -102,6 +102,8 @@ interface IsoJukeboxViewProps {
   onOpenTutorial?: () => void;
   onOpenFeedback?: (contextPrompt?: string) => void;
   onUpdatePatientProfile?: (updates: Partial<PatientProfile>) => void;
+  initialVibeMode?: 'all' | 'relaxing' | 'upbeat' | 'arc';
+  initialBedsideGiantMode?: boolean;
 }
 
 const SIMPLE_MOOD_BEFORE: Array<{
@@ -223,13 +225,28 @@ export default function IsoJukeboxView({
   onOpenTutorial,
   onOpenFeedback,
   onUpdatePatientProfile,
+  initialVibeMode = 'all',
+  initialBedsideGiantMode = false,
 }: IsoJukeboxViewProps) {
-  const [patientSafeView, setPatientSafeView] = useState(false);
-  const [giantDomeMode, setGiantDomeMode] = useState(false);
+  const [patientSafeView, setPatientSafeView] = useState(initialBedsideGiantMode);
+  const [giantDomeMode, setGiantDomeMode] = useState(initialBedsideGiantMode);
   const [dailyAutoPlayEnabled, setDailyAutoPlayEnabled] = useState(false);
   const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
   const [showPaceMatcher, setShowPaceMatcher] = useState(false);
-  const [playlistFilterMode, setPlaylistFilterMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>('all');
+  const [playlistFilterMode, setPlaylistFilterMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>(initialVibeMode);
+
+  React.useEffect(() => {
+    if (initialVibeMode) {
+      setPlaylistFilterMode(initialVibeMode);
+    }
+  }, [initialVibeMode]);
+
+  React.useEffect(() => {
+    if (initialBedsideGiantMode) {
+      setPatientSafeView(true);
+      setGiantDomeMode(true);
+    }
+  }, [initialBedsideGiantMode]);
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
   const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
   const [isEditingHeaderProfile, setIsEditingHeaderProfile] = useState(false);
@@ -1575,6 +1592,27 @@ export default function IsoJukeboxView({
             onOpenGiantButtonMode={() => {
               setGiantDomeMode(true);
               setPatientSafeView(true);
+            }}
+            onTriggerBedsideCardVibe={(vibe) => {
+              setPlaylistFilterMode(vibe);
+              setGiantDomeMode(true);
+              setPatientSafeView(true);
+              const all = trajectory.orderedTracks;
+              if (vibe === 'upbeat') {
+                const lively = all
+                  .filter((t) => t.bpm >= 90 || t.energy >= 6 || t.phase === 1)
+                  .sort((a, b) => b.bpm - a.bpm);
+                const firstUpbeat = lively[0] || all[0];
+                if (firstUpbeat) onTogglePlay(firstUpbeat);
+              } else if (vibe === 'relaxing') {
+                const calm = all
+                  .filter((t) => t.bpm <= 86 || t.energy <= 4 || t.phase === 3)
+                  .sort((a, b) => a.bpm - b.bpm);
+                const firstCalm = calm[0] || all[all.length - 1];
+                if (firstCalm) onTogglePlay(firstCalm);
+              } else if (all[0]) {
+                onTogglePlay(all[0]);
+              }
             }}
             onAttachFullAudioFile={(trackId, fileUrl, fileName) => {
               if (onUpdateTrackInLibrary) {

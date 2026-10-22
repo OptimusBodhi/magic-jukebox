@@ -111,6 +111,8 @@ test('Public Beta feedback system & bedside wake-lock reliability exist and are 
   const shareLib = fs.readFileSync(path.resolve('src/lib/share-and-export.ts'), 'utf8');
   assert.match(shareLib, /formatPhysicalPlayerUsbGuide/);
   assert.match(shareLib, /buildBedsideCardUrl/);
+  assert.match(shareLib, /decodeBedsideCardParam/);
+  assert.match(shareLib, /printBedsideCardsOnly/);
 
   const jukeboxSrc = fs.readFileSync(path.resolve('src/components/IsoJukeboxView.tsx'), 'utf8');
   assert.match(jukeboxSrc, /Giant 1-Button Mode/);
