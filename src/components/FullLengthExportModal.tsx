@@ -250,6 +250,13 @@ export default function FullLengthExportModal({
         return;
       }
 
+      // If the central service is configured on Netlify but returned a specific Spotify API error, surface it
+      if (centralRes.configured && centralRes.error) {
+        setSpotifyStatusMessage(`Spotify API Notice: ${centralRes.error}`);
+        setIsCreatingSpotify(false);
+        return;
+      }
+
       // 3. Otherwise, if a Client ID is configured, start 1-click PKCE auth
       const clientId = customClientId.trim() || getConfiguredSpotifyClientId();
       if (clientId) {

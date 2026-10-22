@@ -297,38 +297,35 @@ export async function createFullLengthSpotifyPlaylist(
     }
   }
 
-  // 3. Create an unlisted (public: false), de-identified playlist
+  // 3. Create an unlisted (public: false), de-identified playlist via Feb 2026 /v1/me/playlists
   const bumpStart = patient.birthYear + 10;
   const bumpEnd = patient.birthYear + 30;
   const playlistName = `Magic Jukebox • ${bumpStart}–${bumpEnd} Era (${trajectory.targetState.label})`;
   const description = `Sequenced by The Magic Jukebox (Studio Wildwoods) • ${bumpStart}-${bumpEnd} Reminiscence Era. Personal, non-commercial listening via your Spotify account.`;
 
-  const createRes = await fetch(
-    `https://api.spotify.com/v1/users/${encodeURIComponent(me.id)}/playlists`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${activeToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: playlistName,
-        description,
-        public: false,
-      }),
-    }
-  );
+  const createRes = await fetch('https://api.spotify.com/v1/me/playlists', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${activeToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: playlistName,
+      description,
+      public: false,
+    }),
+  });
   if (!createRes.ok) {
     throw new Error('Could not create playlist in Spotify.');
   }
   const createdPlaylist = await createRes.json();
 
-  // 4. Add the ordered tracks to the newly created playlist
+  // 4. Add the ordered tracks to the newly created playlist (Feb 2026 /items endpoint with /tracks fallback)
   if (uris.length > 0) {
-    await fetch(
+    const itemsRes = await fetch(
       `https://api.spotify.com/v1/playlists/${encodeURIComponent(
         createdPlaylist.id
-      )}/tracks`,
+      )}/items`,
       {
         method: 'POST',
         headers: {
@@ -338,6 +335,22 @@ export async function createFullLengthSpotifyPlaylist(
         body: JSON.stringify({ uris }),
       }
     );
+
+    if (!itemsRes.ok) {
+      await fetch(
+        `https://api.spotify.com/v1/playlists/${encodeURIComponent(
+          createdPlaylist.id
+        )}/tracks`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${activeToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uris }),
+        }
+      );
+    }
   }
 
   return {

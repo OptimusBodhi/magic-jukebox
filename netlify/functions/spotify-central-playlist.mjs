@@ -115,16 +115,7 @@ export async function handler(event) {
 
     const accessToken = await getCentralSpotifyAccessToken(clientId, clientSecret, refreshToken);
 
-    // 1. Fetch central Magic Jukebox Spotify user ID
-    const meRes = await fetch('https://api.spotify.com/v1/me', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!meRes.ok) {
-      throw new Error('Could not read central Spotify account profile.');
-    }
-    const me = await meRes.json();
-
-    // 2. Resolve each sequenced song to a Spotify track URI in exact order
+    // 1. Resolve each sequenced song to a Spotify track URI in exact order
     const uris = [];
     for (const track of tracks) {
       const title = String(track.title || '').trim();
@@ -159,7 +150,8 @@ export async function handler(event) {
       }
     }
 
-    // 3. Create a de-identified, unlisted (public: false) playlist on the central account
+    // 2. Create a de-identified, unlisted (public: false) playlist on the central account
+    // Uses POST /v1/me/playlists per Spotify's Feb 2026 Web API spec (which deprecated /v1/users/{id}/playlists).
     // Legal/Privacy Safe-Harbor: Never include patient full names or clinical diagnoses in public Spotify metadata.
     const bumpStart = birthYear + 10;
     const bumpEnd = birthYear + 30;
@@ -167,31 +159,31 @@ export async function handler(event) {
     const playlistName = `Magic Jukebox • ${bumpStart}–${bumpEnd} Era (${vibeLabel} #${code})`;
     const description = `Sequenced by The Magic Jukebox (Studio Wildwoods) • ${bumpStart}-${bumpEnd} Reminiscence Era (${vibeLabel}). For personal, non-commercial listening via your own Spotify account.`;
 
-    const createRes = await fetch(
-      `https://api.spotify.com/v1/users/${encodeURIComponent(me.id)}/playlists`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: playlistName,
-          description,
-          public: false, // Unlisted: accessible via direct link/QR code without cluttering public profile
-        }),
-      }
-    );
+    const createRes = await fetch('https://api.spotify.com/v1/me/playlists', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: playlistName,
+        description,
+        public: false, // Unlisted: accessible via direct link/QR code without cluttering public profile
+      }),
+    });
 
     if (!createRes.ok) {
-      throw new Error('Could not create unlisted playlist on central Spotify account.');
+      const errDetail = await createRes.text().catch(() => '');
+      throw new Error(
+        `Could not create unlisted playlist on central Spotify account (${createRes.status}): ${errDetail.slice(0, 140)}`
+      );
     }
     const createdPlaylist = await createRes.json();
 
-    // 4. Add ordered tracks to the playlist
+    // 3. Add ordered tracks to the playlist (uses Feb 2026 /items endpoint with /tracks fallback)
     if (uris.length > 0) {
-      await fetch(
-        `https://api.spotify.com/v1/playlists/${encodeURIComponent(createdPlaylist.id)}/tracks`,
+      const itemsRes = await fetch(
+        `https://api.spotify.com/v1/playlists/${encodeURIComponent(createdPlaylist.id)}/items`,
         {
           method: 'POST',
           headers: {
@@ -201,6 +193,20 @@ export async function handler(event) {
           body: JSON.stringify({ uris }),
         }
       );
+
+      if (!itemsRes.ok) {
+        await fetch(
+          `https://api.spotify.com/v1/playlists/${encodeURIComponent(createdPlaylist.id)}/tracks`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uris }),
+          }
+        );
+      }
     }
 
     const playlistUrl =
