@@ -12,6 +12,7 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { PatientProfile } from '@/lib/iso-sequencer';
 
@@ -21,6 +22,7 @@ interface LandingHomeViewProps {
   onStartCreateOwn: () => void;
   onExploreDemo: () => void;
   onOpenTutorial: () => void;
+  onOpenFeedback?: () => void;
   onNavigateTab: (tab: 'jukebox' | 'interview' | 'detective' | 'telemetry' | 'science') => void;
 }
 
@@ -30,6 +32,7 @@ export default function LandingHomeView({
   onStartCreateOwn,
   onExploreDemo,
   onOpenTutorial,
+  onOpenFeedback,
   onNavigateTab,
 }: LandingHomeViewProps) {
   const [showMoreTools, setShowMoreTools] = useState(false);
@@ -102,7 +105,7 @@ export default function LandingHomeView({
           </button>
         </div>
 
-        {/* Simple Help Link */}
+        {/* Simple Help & Beta Feedback Bar */}
         <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-wildwoods-moss">
           <button
             type="button"
@@ -112,6 +115,17 @@ export default function LandingHomeView({
             <HelpCircle className="w-4 h-4" />
             First Time Here? See How It Works (4 Easy Pictures)
           </button>
+
+          {onOpenFeedback && (
+            <button
+              type="button"
+              onClick={onOpenFeedback}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream font-bold text-xs sm:text-sm flex items-center gap-2 border border-wildwoods-sage/50 transition"
+            >
+              <MessageSquareHeart className="w-4 h-4 text-wildwoods-amber" />
+              Share Beta Feedback
+            </button>
+          )}
         </div>
       </section>
 

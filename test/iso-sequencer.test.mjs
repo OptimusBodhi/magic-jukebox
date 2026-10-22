@@ -91,6 +91,24 @@ test('North Star Charter exists and enforces evidence-informed supportive care &
   assert.match(fhirLib, /intent:\s*'plan'/);
 });
 
+test('Public Beta feedback system & bedside wake-lock reliability exist and are wired into page.tsx', () => {
+  const feedbackLibPath = path.resolve('src/lib/feedback.ts');
+  const feedbackModalPath = path.resolve('src/components/BetaFeedbackModal.tsx');
+  const netlifyFormsPath = path.resolve('public/__forms.html');
+  assert.equal(fs.existsSync(feedbackLibPath), true, 'src/lib/feedback.ts must exist');
+  assert.equal(fs.existsSync(feedbackModalPath), true, 'src/components/BetaFeedbackModal.tsx must exist');
+  assert.equal(fs.existsSync(netlifyFormsPath), true, 'public/__forms.html must exist for Netlify Forms');
+
+  const formsHtml = fs.readFileSync(netlifyFormsPath, 'utf8');
+  assert.match(formsHtml, /name="magic-jukebox-beta-feedback"/);
+  assert.match(formsHtml, /data-netlify="true"/);
+
+  const pageSrc = fs.readFileSync(path.resolve('src/app/page.tsx'), 'utf8');
+  assert.match(pageSrc, /BetaFeedbackModal/);
+  assert.match(pageSrc, /wakeLock/);
+});
+
+
 
 
 

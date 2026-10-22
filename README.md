@@ -47,6 +47,10 @@
 6. **Clinical Science & Evidence Vault (`src/components/ClinicalEvidenceVaultView.tsx`)**
    - Interactive **Jacobsen et al. (2015)** neuroanatomical breakdown (`cACC`, `ventral pre-SMA`, `DMN`), peer-reviewed clinical reference matrix, and UK competitive ecosystem audit (*Playlist for Life*, *BBC Music Memories*, *m4d Radio*, *Vera*, *MediMusic*).
 
+7. **In-App Public Beta Feedback System (`src/components/BetaFeedbackModal.tsx`, `src/lib/feedback.ts` & `public/__forms.html`)**
+   - Always-accessible, non-intrusive **`💬 Feedback`** buttons in the top header, bottom-right floating corner, and post-session check-in banner.
+   - Simple 1-tap emoji rating (`😍 Loved It`, `🙂 Good & Helpful`, `🤔 Something Confused Me`, `🐞 Found a Problem`), quick topic chips, and open notes wired directly to **Netlify Forms** (`magic-jukebox-beta-feedback`) with local storage and clipboard backup.
+
 ---
 
 ## 2. Quick Start & Verification

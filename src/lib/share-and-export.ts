@@ -21,6 +21,8 @@ export interface CompactSharedPayload {
     e: number;
     mn: string;
     dp: string;
+    pu?: string;
+    au?: string;
   }>;
   rf: Array<{
     i: string;
@@ -59,6 +61,8 @@ export function encodeShareableJukeboxUrl(
       e: tr.energy,
       mn: tr.memoryNote.slice(0, 180),
       dp: tr.duetPrompt.slice(0, 160),
+      ...(tr.previewUrl && tr.previewUrl.startsWith('http') ? { pu: tr.previewUrl } : {}),
+      ...(tr.artworkUrl && tr.artworkUrl.startsWith('http') ? { au: tr.artworkUrl } : {}),
     })),
     rf: quarantinedList.slice(0, 8).map((q) => ({
       i: q.id,
@@ -121,6 +125,8 @@ export function decodeShareableJukeboxParam(encodedParam: string): {
       duetPrompt: item.dp,
       chorusLyrics: [`${item.ti} — ${item.a} (${item.y})`],
       itunesQuery: `${item.a} ${item.ti}`,
+      previewUrl: item.pu,
+      artworkUrl: item.au,
     }));
 
     const quarantinedList = (parsed.rf || []).map((q) => ({
@@ -168,14 +174,14 @@ export function formatCaregiverPrescriptionText(
 ): string {
   const lines: string[] = [
     `====================================================================`,
-    `THE MAGIC JUKEBOX — PERSONALIZED CAREGIVER MUSIC PRESCRIPTION`,
+    `THE MAGIC JUKEBOX — PERSONALIZED SUPPORTIVE MUSIC CARE PLAN`,
     `====================================================================`,
     `Loved One: ${patient.name} (Preferred Name: "${patient.preferredName}")`,
     `Birth Year: ${patient.birthYear} | Core Reminiscence Bump (Ages 10-30): ${
       patient.birthYear + 10
     }-${patient.birthYear + 30}`,
     `Roots & Heritage: ${patient.hometown} • ${patient.musicalHeritage}`,
-    `Proactive Sundowning Shield: Start music 30 mins BEFORE ${patient.sundowningPeakTime} peak`,
+    `Proactive Afternoon Routine: Start music 30 mins BEFORE ${patient.sundowningPeakTime} restlessness window`,
     `--------------------------------------------------------------------`,
     `ACTIVE ISO-PRINCIPLE TRAJECTORY (30-MINUTE ARC)`,
     `Where We Are Now: ${trajectory.currentState.label} (~${trajectory.currentState.targetBpm} BPM)`,
@@ -185,7 +191,7 @@ export function formatCaregiverPrescriptionText(
 
   for (const phase of trajectory.phases) {
     lines.push(`\n[${phase.name.toUpperCase()} — ${phase.timeWindow} | ${phase.targetBpmRange}]`);
-    lines.push(`Clinical Goal: ${phase.clinicalObjective}`);
+    lines.push(`Supportive Goal: ${phase.clinicalObjective}`);
     phase.tracks.forEach((tr, idx) => {
       lines.push(
         `  ${idx + 1}. "${tr.title}" — ${tr.artist} (${tr.year}) [${tr.bpm} BPM, ${tr.mode}]`
@@ -196,7 +202,7 @@ export function formatCaregiverPrescriptionText(
   }
 
   lines.push(`\n--------------------------------------------------------------------`);
-  lines.push(`🛑 RED FLAG QUARANTINE LIST (DO NOT PLAY — DISTRESS TRIGGERS):`);
+  lines.push(`🛑 SKIPPED & BLOCKED SONGS (DO NOT PLAY — AVOID DISTRESS):`);
   if (quarantinedList.length === 0) {
     lines.push(`  • None recorded yet.`);
   } else {

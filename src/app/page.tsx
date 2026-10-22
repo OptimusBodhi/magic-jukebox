@@ -17,6 +17,7 @@ import {
   Home,
   HelpCircle,
   ChevronDown,
+  MessageSquareHeart,
 } from 'lucide-react';
 import {
   ARTHUR_SEED_TRACKS,
@@ -45,6 +46,7 @@ import ClinicalEvidenceVaultView from '@/components/ClinicalEvidenceVaultView';
 import GuidedOnboardingView from '@/components/GuidedOnboardingView';
 import LandingHomeView from '@/components/LandingHomeView';
 import SimpleTutorialModal from '@/components/SimpleTutorialModal';
+import BetaFeedbackModal from '@/components/BetaFeedbackModal';
 
 type ActiveTab = 'home' | 'jukebox' | 'interview' | 'detective' | 'telemetry' | 'science';
 
@@ -53,6 +55,8 @@ const STORAGE_KEY = 'magic_jukebox_wildwoods_state_v1';
 export default function MagicJukeboxApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
+  const [feedbackContextPrompt, setFeedbackContextPrompt] = useState<string | null>(null);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const [patient, setPatient] = useState<PatientProfile>(DEFAULT_PATIENT_PROFILE);
   const [isCustomProfile, setIsCustomProfile] = useState<boolean>(false);
@@ -302,6 +306,27 @@ export default function MagicJukeboxApp() {
     return () => clearInterval(timer);
   }, [isGerdnerTimerRunning]);
 
+  // Bedside Reliability: Keep screen awake (Wake Lock API) while music is actively playing
+  useEffect(() => {
+    if (!isPlaying || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+    let wakeLockSentinel: { release: () => Promise<void> } | null = null;
+    (
+      navigator as Navigator & {
+        wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+      }
+    ).wakeLock
+      ?.request('screen')
+      .then((sentinel) => {
+        wakeLockSentinel = sentinel;
+      })
+      .catch(() => {
+        // Ignore if browser or battery saver declines wakeLock
+      });
+    return () => {
+      wakeLockSentinel?.release().catch(() => {});
+    };
+  }, [isPlaying]);
+
   // Stop Web Audio fallback synthesizer
   const stopWebAudioFallback = () => {
     if (synthIntervalRef.current) {
@@ -549,6 +574,17 @@ export default function MagicJukeboxApp() {
         `🔗 Shareable Family & Care-Team Link copied to clipboard! Anyone opening this link on any phone or tablet will load ${patient.name}’s custom Jukebox.`
       );
       setTimeout(() => setInterviewCompleteBanner(null), 8000);
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator
+          .share({
+            title: `${patient.preferredName}’s Magic Jukebox`,
+            text: `Open ${patient.preferredName}’s personalized Magic Jukebox (${
+              patient.birthYear + 10
+            }–${patient.birthYear + 30} Youth Era):`,
+            url: shareUrl,
+          })
+          .catch(() => {});
+      }
     } catch {
       setInterviewCompleteBanner(`Shareable Link ready in your browser address bar: ${shareUrl}`);
     }
@@ -559,7 +595,7 @@ export default function MagicJukeboxApp() {
     try {
       await navigator.clipboard.writeText(text);
       setInterviewCompleteBanner(
-        `📋 Copied ${patient.name}’s 3-Phase Iso-Principle Prescription, Memory Mirror notes & Red Flag list to clipboard!`
+        `📋 Copied ${patient.name}’s Supportive Music Care Plan, Memory Mirror notes & Skipped Songs list to clipboard!`
       );
       setTimeout(() => setInterviewCompleteBanner(null), 7000);
     } catch {
@@ -670,6 +706,21 @@ export default function MagicJukeboxApp() {
               <span>{isCustomProfile ? 'Change Setup' : 'Build Playlist'}</span>
             </button>
 
+            {/* Obvious, Unintrusive Beta Feedback Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMoreMenuOpen(false);
+                setFeedbackContextPrompt(null);
+                setIsFeedbackOpen(true);
+              }}
+              className="min-h-[42px] px-2.5 sm:px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-amber/50 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 transition"
+              title="Share quick feedback on The Magic Jukebox"
+            >
+              <MessageSquareHeart className="w-4 h-4 text-wildwoods-amber shrink-0" />
+              <span className="hidden sm:inline">Feedback</span>
+            </button>
+
             {/* Unified Menu Dropdown (Always fits on every mobile screen!) */}
             <div className="relative">
               <button
@@ -707,6 +758,19 @@ export default function MagicJukeboxApp() {
                   >
                     <HelpCircle className="w-4 h-4 text-wildwoods-gold shrink-0" />
                     How It Works (Quick Guide)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setFeedbackContextPrompt(null);
+                      setIsFeedbackOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-left text-xs sm:text-sm font-extrabold text-wildwoods-cream border border-wildwoods-sage/50 flex items-center gap-2.5"
+                  >
+                    <MessageSquareHeart className="w-4 h-4 text-wildwoods-amber shrink-0" />
+                    Give Beta Feedback
                   </button>
 
                   <button
@@ -804,6 +868,18 @@ export default function MagicJukeboxApp() {
         onOpenJukebox={() => setActiveTab('jukebox')}
       />
 
+      {/* Obvious, Unintrusive In-App Beta Feedback Modal */}
+      <BetaFeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => {
+          setIsFeedbackOpen(false);
+          setFeedbackContextPrompt(null);
+        }}
+        activeTab={activeTab}
+        trackCount={trajectory.orderedTracks.length}
+        initialContextPrompt={feedbackContextPrompt}
+      />
+
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28">
         {interviewCompleteBanner && (
@@ -837,6 +913,10 @@ export default function MagicJukeboxApp() {
             }}
             onExploreDemo={() => setActiveTab('jukebox')}
             onOpenTutorial={() => setIsTutorialOpen(true)}
+            onOpenFeedback={() => {
+              setFeedbackContextPrompt(null);
+              setIsFeedbackOpen(true);
+            }}
             onNavigateTab={(t) => {
               if (t === 'interview') setInterviewStartBlank(false);
               setActiveTab(t);
@@ -899,6 +979,10 @@ export default function MagicJukeboxApp() {
             rasPulseEnabled={rasPulseEnabled}
             onToggleRasPulse={() => setRasPulseEnabled((prev) => !prev)}
             onOpenTutorial={() => setIsTutorialOpen(true)}
+            onOpenFeedback={(promptText) => {
+              setFeedbackContextPrompt(promptText || null);
+              setIsFeedbackOpen(true);
+            }}
             onUpdatePatientProfile={(updates) => {
               setPatient((prev) => ({ ...prev, ...updates }));
               setIsCustomProfile(true);
@@ -1028,9 +1112,22 @@ export default function MagicJukeboxApp() {
               This Magic Jukebox is being developed in partnership with{' '}
               <strong>Studio Wildwoods</strong>.
             </p>
-            <p className="text-xs text-slate-500 font-semibold">
-              Evidence-Informed Personalized Music Sequencing, Pace Support &amp; Caregiver Documentation
-            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedbackContextPrompt(null);
+                  setIsFeedbackOpen(true);
+                }}
+                className="px-3 py-1 rounded-lg bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-gold font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition"
+              >
+                <MessageSquareHeart className="w-3.5 h-3.5" />
+                Share Beta Feedback
+              </button>
+              <p className="text-xs text-slate-500 font-semibold">
+                Evidence-Informed Personalized Music Sequencing, Pace Support &amp; Caregiver Documentation
+              </p>
+            </div>
           </div>
           <p className="text-[11px] text-slate-500 text-left sm:text-center leading-relaxed max-w-4xl mx-auto">
             Grounded in peer-reviewed neuroscience and musicology to support families, caregivers,
@@ -1040,6 +1137,25 @@ export default function MagicJukeboxApp() {
           </p>
         </div>
       </footer>
+
+      {/* Obvious, Unintrusive Floating Corner Feedback Pill */}
+      <div
+        className={`fixed right-4 z-30 ${
+          activeTrack && isPlaying && activeTab !== 'jukebox' ? 'bottom-20' : 'bottom-4'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setFeedbackContextPrompt(null);
+            setIsFeedbackOpen(true);
+          }}
+          className="min-h-[44px] px-4 py-2.5 rounded-full bg-wildwoods-slate/95 hover:bg-wildwoods-forest text-wildwoods-gold border-2 border-wildwoods-amber shadow-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 transition"
+        >
+          <MessageSquareHeart className="w-4 h-4 text-wildwoods-amber shrink-0" />
+          <span>Give Feedback</span>
+        </button>
+      </div>
 
       {/* Persistent Mini-Player Bar only when audio is actively playing on another tab */}
       {activeTrack && isPlaying && activeTab !== 'jukebox' && (
