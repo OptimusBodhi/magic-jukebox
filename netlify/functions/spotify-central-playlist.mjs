@@ -150,9 +150,11 @@ export async function handler(event) {
       }
     }
 
-    // 2. Create a de-identified, unlisted (public: false) playlist on the central account
+    // 2. Create a de-identified, link-accessible (public: true) playlist on the central account
     // Uses POST /v1/me/playlists per Spotify's Feb 2026 Web API spec (which deprecated /v1/users/{id}/playlists).
-    // Legal/Privacy Safe-Harbor: Never include patient full names or clinical diagnoses in public Spotify metadata.
+    // Note: Spotify requires `public: true` for `open.spotify.com/playlist/{id}` and QR codes to be openable
+    // without returning 404 ("This content is no longer available"). API-created playlists are not pinned to
+    // the creator's public profile by default, and titles are strictly de-identified (zero patient PHI).
     const bumpStart = birthYear + 10;
     const bumpEnd = birthYear + 30;
     const code = computeShortPlaylistCode(tracks, birthYear);
@@ -168,7 +170,7 @@ export async function handler(event) {
       body: JSON.stringify({
         name: playlistName,
         description,
-        public: false, // Unlisted: accessible via direct link/QR code without cluttering public profile
+        public: true, // Required so the shared link & QR code resolve (200 OK) instead of 404
       }),
     });
 

@@ -129,7 +129,7 @@ test('Central Spotify Playlist serverless function, Instant Full-Length Multi-So
 
   const centralFnSrc = fs.readFileSync(centralFnPath, 'utf8');
   assert.match(centralFnSrc, /SPOTIFY_CENTRAL_REFRESH_TOKEN/);
-  assert.match(centralFnSrc, /public:\s*false/); // Unlisted privacy safe-harbor
+  assert.match(centralFnSrc, /public:\s*true/); // Link-accessible with de-identified title safe-harbor
 
   const fullPlayerSrc = fs.readFileSync(fullPlayerLibPath, 'utf8');
   assert.match(fullPlayerSrc, /buildInstantYoutubePlaylistUrl/);

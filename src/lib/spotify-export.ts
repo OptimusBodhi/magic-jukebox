@@ -297,7 +297,7 @@ export async function createFullLengthSpotifyPlaylist(
     }
   }
 
-  // 3. Create an unlisted (public: false), de-identified playlist via Feb 2026 /v1/me/playlists
+  // 3. Create a de-identified, link-accessible (public: true) playlist via Feb 2026 /v1/me/playlists
   const bumpStart = patient.birthYear + 10;
   const bumpEnd = patient.birthYear + 30;
   const playlistName = `Magic Jukebox • ${bumpStart}–${bumpEnd} Era (${trajectory.targetState.label})`;
@@ -312,7 +312,7 @@ export async function createFullLengthSpotifyPlaylist(
     body: JSON.stringify({
       name: playlistName,
       description,
-      public: false,
+      public: true,
     }),
   });
   if (!createRes.ok) {
