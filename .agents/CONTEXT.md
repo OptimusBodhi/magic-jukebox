@@ -8,8 +8,11 @@
 - **Modular Specialty Architecture:** A shared core audio/sequencing/EHR engine serving focused specialty tracks—starting with **Memory & Cognitive Care (Dementia / Alzheimer’s)** and **Movement & Pace Support (Parkinson’s / Rhythmic Pacing)**, plus **Calm & Restorative Support**.
 
 ## 2. Core Architecture & Stack
-- **Framework**: Next.js (App Router, `output: 'export'` static build for Netlify), React, TypeScript, Tailwind CSS, Framer Motion, Lucide React.
-- **Audio & Tempo Engine**: HTML5 Audio (`preservesPitch = true` WSOLA time-stretching from `0.65x` to `1.35x` + gradual speed-up/slow-down ramp + Web Audio rhythmic beat pulse) connected to the public iTunes Search API (`https://itunes.apple.com/search?term=...&entity=song&limit=12`), plus 1-click full-length playlist export to Spotify (OAuth PKCE), Apple Music, YouTube, M3U, and CSV.
+- **Framework**: Next.js (App Router, `output: 'export'` static build for Netlify + Netlify Serverless Functions in `netlify/functions/`), React, TypeScript, Tailwind CSS, Framer Motion, Lucide React.
+- **Audio, Full-Length Playlist & Tempo Engine**:
+  - **In-App Continuous Full-Length Player & Multi-Song Playlist URLs** (`src/lib/full-length-player.ts` & `netlify/functions/youtube-playlist.mjs`): Queues and streams full-length 3–4 minute songs continuously inside the Jukebox (`youtube-nocookie.com/embed/...`) or opens a 1-tap stateless multi-song playlist link & QR code (`watch_videos?video_ids=...`) with zero login.
+  - **Central Magic Jukebox Spotify Service** (`netlify/functions/spotify-central-playlist.mjs` & `src/lib/spotify-export.ts`): Uses `SPOTIFY_CENTRAL_CLIENT_ID` and `SPOTIFY_CENTRAL_REFRESH_TOKEN` to mint unlisted (`public: false`), de-identified Spotify playlists via Spotify's Feb 2026 `POST /v1/me/playlists` and `POST /v1/playlists/{id}/items` endpoints—returning an instant Spotify app link, embedded player, and scannable Phone QR Code.
+  - **30s Sample Check & Pitch-Preserving Tempo Matcher**: HTML5 Audio (`preservesPitch = true` WSOLA time-stretching from `0.65x` to `1.35x` + gradual speed-up/slow-down ramp + Web Audio rhythmic beat pulse) connected to the public iTunes Search API (`https://itunes.apple.com/search?term=...&entity=song&limit=12`) with direct Apple Music track deep-linking (`music.apple.com`).
 - **State Persistence & Cross-Device Sharing**: `LocalStorage` auto-save + self-contained `?share=...` URL state encoding (`src/lib/share-and-export.ts`), pre-seeded with sample profile "Arthur Pendelton" (born 1944, Youth Era 1954–1974) alongside a 3-step **Build My Playlist** onboarding flow covering `1940s`–`2020s` decades and genres.
 
 ## 3. UX & Copy Guardrails

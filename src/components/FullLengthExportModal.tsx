@@ -705,30 +705,58 @@ export default function FullLengthExportModal({
                   </button>
                 </div>
 
-                {/* Created Spotify Playlist Banner + Embedded Player */}
+                {/* Created Spotify Playlist Banner + QR Code + Embedded Player */}
                 {createdSpotifyPlaylist && (
                   <div className="p-4 rounded-2xl bg-emerald-950 text-emerald-100 border-2 border-emerald-400 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-0.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
                         <div className="font-extrabold text-sm flex items-center gap-2 text-emerald-300">
                           <CheckCircle2 className="w-4 h-4 shrink-0" />
                           Ready: “{createdSpotifyPlaylist.playlistName}” (
                           {createdSpotifyPlaylist.matchedCount} full tracks)
                         </div>
                         <p className="text-xs text-emerald-200">
-                          Unlisted &amp; privacy-safe • Tap to launch in the Spotify app or scan the
-                          QR code above!
+                          Unlisted &amp; privacy-safe • Tap below to launch in Spotify or scan this
+                          QR code with any phone camera:
                         </p>
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <a
+                            href={createdSpotifyPlaylist.playlistUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-h-[42px] px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5"
+                          >
+                            Open in Spotify App
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopyInstantPlaylistLink(createdSpotifyPlaylist.playlistUrl)
+                            }
+                            className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-900 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-100 font-bold text-xs flex items-center gap-1.5"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            {copiedPlaylistLink ? '✓ Copied Link!' : 'Copy Spotify Link'}
+                          </button>
+                        </div>
                       </div>
-                      <a
-                        href={createdSpotifyPlaylist.playlistUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shrink-0"
-                      >
-                        Open in Spotify App
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+
+                      <div className="flex items-center gap-2.5 bg-white text-slate-900 p-2.5 rounded-2xl border-2 border-emerald-400 shrink-0 self-start sm:self-center">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=${encodeURIComponent(
+                            createdSpotifyPlaylist.playlistUrl
+                          )}`}
+                          alt="Scan to open Spotify playlist on phone"
+                          className="w-20 h-20 rounded-lg shrink-0"
+                        />
+                        <div className="text-[11px] leading-tight max-w-[95px]">
+                          <div className="font-extrabold text-emerald-900">Spotify QR</div>
+                          <div className="text-slate-600 mt-0.5">
+                            Scan with phone camera to play
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {createdSpotifyPlaylist.embedUrl && (
