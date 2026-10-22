@@ -44,6 +44,7 @@ interface FullLengthExportModalProps {
   onClose: () => void;
   patient: PatientProfile;
   trajectory: IsoTrajectoryResult;
+  initialTab?: 'streaming' | 'hardware';
   onAttachFullAudioFile?: (trackId: string, fileUrl: string, fileName: string) => void;
   onOpenGiantButtonMode?: () => void;
   onTriggerBedsideCardVibe?: (vibe: 'upbeat' | 'arc' | 'relaxing') => void;
@@ -54,11 +55,18 @@ export default function FullLengthExportModal({
   onClose,
   patient,
   trajectory,
+  initialTab = 'streaming',
   onAttachFullAudioFile,
   onOpenGiantButtonMode,
   onTriggerBedsideCardVibe,
 }: FullLengthExportModalProps) {
-  const [modalTab, setModalTab] = useState<'streaming' | 'hardware'>('streaming');
+  const [modalTab, setModalTab] = useState<'streaming' | 'hardware'>(initialTab);
+
+  useEffect(() => {
+    if (isOpen) {
+      setModalTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [copiedTracklist, setCopiedTracklist] = useState(false);
   const [copiedUsbGuide, setCopiedUsbGuide] = useState(false);
   const [copiedNfcVibe, setCopiedNfcVibe] = useState<string | null>(null);
@@ -222,18 +230,34 @@ export default function FullLengthExportModal({
         {/* Header */}
         <div className="bg-wildwoods-slate text-wildwoods-cream px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-wildwoods-moss">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow shrink-0">
-              <Disc3 className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div
+              className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold shadow shrink-0 ${
+                modalTab === 'hardware'
+                  ? 'bg-wildwoods-amber text-wildwoods-slate'
+                  : 'bg-emerald-600 text-white'
+              }`}
+            >
+              {modalTab === 'hardware' ? (
+                <Radio className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : (
+                <Disc3 className="w-5 h-5 sm:w-6 sm:h-6" />
+              )}
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-emerald-300 truncate">
-                Full-Length Playlist
+              <div className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-wildwoods-gold truncate">
+                {modalTab === 'hardware'
+                  ? 'Bedside Cards, 1-Button Screen & Physical Players'
+                  : 'Full-Length Playlist'}
               </div>
               <h2
                 id="full-length-export-title"
                 className="text-base sm:text-2xl font-serif font-bold text-wildwoods-cream leading-snug"
               >
-                Play Full-Length Songs &amp; Export to Spotify
+                {modalTab === 'hardware' ? (
+                  <>Easy-Button, Printable QR Cards &amp; Bedside Setup</>
+                ) : (
+                  <>Play Full-Length Songs &amp; Export to Spotify</>
+                )}
               </h2>
             </div>
           </div>

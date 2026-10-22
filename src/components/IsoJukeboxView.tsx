@@ -104,6 +104,7 @@ interface IsoJukeboxViewProps {
   onUpdatePatientProfile?: (updates: Partial<PatientProfile>) => void;
   initialVibeMode?: 'all' | 'relaxing' | 'upbeat' | 'arc';
   initialBedsideGiantMode?: boolean;
+  openBedsideHardwareTrigger?: number;
 }
 
 const SIMPLE_MOOD_BEFORE: Array<{
@@ -227,6 +228,7 @@ export default function IsoJukeboxView({
   onUpdatePatientProfile,
   initialVibeMode = 'all',
   initialBedsideGiantMode = false,
+  openBedsideHardwareTrigger = 0,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(initialBedsideGiantMode);
   const [giantDomeMode, setGiantDomeMode] = useState(initialBedsideGiantMode);
@@ -234,6 +236,9 @@ export default function IsoJukeboxView({
   const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
   const [showPaceMatcher, setShowPaceMatcher] = useState(false);
   const [playlistFilterMode, setPlaylistFilterMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>(initialVibeMode);
+  const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
+  const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
+  const [exportModalInitialTab, setExportModalInitialTab] = useState<'streaming' | 'hardware'>('streaming');
 
   React.useEffect(() => {
     if (initialVibeMode) {
@@ -247,8 +252,13 @@ export default function IsoJukeboxView({
       setGiantDomeMode(true);
     }
   }, [initialBedsideGiantMode]);
-  const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
-  const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (openBedsideHardwareTrigger > 0) {
+      setExportModalInitialTab('hardware');
+      setIsFullLengthExportOpen(true);
+    }
+  }, [openBedsideHardwareTrigger]);
   const [isEditingHeaderProfile, setIsEditingHeaderProfile] = useState(false);
   const [draftName, setDraftName] = useState(patient.preferredName);
   const [draftBirthYear, setDraftBirthYear] = useState(patient.birthYear);
@@ -508,6 +518,18 @@ export default function IsoJukeboxView({
                 ? `Auto-Play Daily at ${autoPlayTargetTime}: ON`
                 : `Auto-Play at ${autoPlayTargetTime}: OFF`}
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setExportModalInitialTab('hardware');
+                setIsFullLengthExportOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-full bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-amber/50 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition"
+            >
+              <Printer className="w-3.5 h-3.5 text-wildwoods-gold" />
+              Print Bedside Cards &amp; Radio Setup
+            </button>
           </div>
 
           <button
@@ -519,6 +541,44 @@ export default function IsoJukeboxView({
             Exit Full-Screen View
           </button>
         </div>
+
+        <FullLengthExportModal
+          isOpen={isFullLengthExportOpen}
+          onClose={() => setIsFullLengthExportOpen(false)}
+          patient={patient}
+          trajectory={trajectory}
+          initialTab={exportModalInitialTab}
+          onOpenGiantButtonMode={() => {
+            setGiantDomeMode(true);
+            setPatientSafeView(true);
+          }}
+          onTriggerBedsideCardVibe={(vibe) => {
+            setPlaylistFilterMode(vibe);
+            setGiantDomeMode(true);
+            setPatientSafeView(true);
+            const all = trajectory.orderedTracks;
+            if (vibe === 'upbeat') {
+              const lively = all
+                .filter((t) => t.bpm >= 90 || t.energy >= 6 || t.phase === 1)
+                .sort((a, b) => b.bpm - a.bpm);
+              const firstUpbeat = lively[0] || all[0];
+              if (firstUpbeat) onTogglePlay(firstUpbeat);
+            } else if (vibe === 'relaxing') {
+              const calm = all
+                .filter((t) => t.bpm <= 86 || t.energy <= 4 || t.phase === 3)
+                .sort((a, b) => a.bpm - b.bpm);
+              const firstCalm = calm[0] || all[all.length - 1];
+              if (firstCalm) onTogglePlay(firstCalm);
+            } else if (all[0]) {
+              onTogglePlay(all[0]);
+            }
+          }}
+          onAttachFullAudioFile={(trackId, fileUrl, fileName) => {
+            if (onUpdateTrackInLibrary) {
+              onUpdateTrackInLibrary(trackId, { previewUrl: fileUrl });
+            }
+          }}
+        />
 
         {giantDomeMode ? (
           <div className="py-4 space-y-6 text-center">
@@ -807,23 +867,27 @@ export default function IsoJukeboxView({
 
             <button
               type="button"
-              onClick={() => setIsFullLengthExportOpen(true)}
+              onClick={() => {
+                setExportModalInitialTab('streaming');
+                setIsFullLengthExportOpen(true);
+              }}
               className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-400/50 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow transition"
             >
               <ExternalLink className="w-4 h-4 text-emerald-200" />
               Export to Spotify / Full Songs
             </button>
 
-            {onCopyShareLink && (
-              <button
-                type="button"
-                onClick={onCopyShareLink}
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
-              >
-                <Share2 className="w-4 h-4 text-wildwoods-gold" />
-                Share Link
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setExportModalInitialTab('hardware');
+                setIsFullLengthExportOpen(true);
+              }}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/60 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition"
+            >
+              <Printer className="w-4 h-4 text-wildwoods-amber" />
+              Bedside Cards &amp; Easy-Button
+            </button>
 
             <button
               type="button"
@@ -834,14 +898,14 @@ export default function IsoJukeboxView({
               Simple Full-Screen View
             </button>
 
-            {onOpenTutorial && (
+            {onCopyShareLink && (
               <button
                 type="button"
-                onClick={onOpenTutorial}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/50 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
+                onClick={onCopyShareLink}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
               >
-                <HelpCircle className="w-4 h-4 text-wildwoods-gold" />
-                How to Use
+                <Share2 className="w-4 h-4 text-wildwoods-gold" />
+                Share Link
               </button>
             )}
           </div>
@@ -1553,7 +1617,10 @@ export default function IsoJukeboxView({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsFullLengthExportOpen(true)}
+                onClick={() => {
+                  setExportModalInitialTab('streaming');
+                  setIsFullLengthExportOpen(true);
+                }}
                 className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -1589,6 +1656,7 @@ export default function IsoJukeboxView({
             onClose={() => setIsFullLengthExportOpen(false)}
             patient={patient}
             trajectory={trajectory}
+            initialTab={exportModalInitialTab}
             onOpenGiantButtonMode={() => {
               setGiantDomeMode(true);
               setPatientSafeView(true);

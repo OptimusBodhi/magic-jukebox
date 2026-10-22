@@ -18,6 +18,7 @@ import {
   HelpCircle,
   ChevronDown,
   MessageSquareHeart,
+  Printer,
 } from 'lucide-react';
 import {
   ARTHUR_SEED_TRACKS,
@@ -61,6 +62,7 @@ export default function MagicJukeboxApp() {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const [initialVibeMode, setInitialVibeMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>('all');
   const [initialBedsideGiantMode, setInitialBedsideGiantMode] = useState<boolean>(false);
+  const [bedsideHardwareTrigger, setBedsideHardwareTrigger] = useState<number>(0);
   const [patient, setPatient] = useState<PatientProfile>(DEFAULT_PATIENT_PROFILE);
   const [isCustomProfile, setIsCustomProfile] = useState<boolean>(false);
   const [interviewStartBlank, setInterviewStartBlank] = useState<boolean>(false);
@@ -942,6 +944,19 @@ export default function MagicJukeboxApp() {
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
+                        setActiveTab('jukebox');
+                        setBedsideHardwareTrigger((prev) => prev + 1);
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
+                    >
+                      <Printer className="w-4 h-4 text-wildwoods-gold shrink-0" />
+                      Bedside Cards &amp; Easy-Button Setup
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
                         setActiveTab('detective');
                       }}
                       className="w-full px-3.5 py-2 rounded-xl hover:bg-wildwoods-forest text-left text-xs font-bold text-wildwoods-cream flex items-center gap-2.5"
@@ -1053,6 +1068,10 @@ export default function MagicJukeboxApp() {
               setFeedbackContextPrompt(null);
               setIsFeedbackOpen(true);
             }}
+            onOpenBedsideHardware={() => {
+              setActiveTab('jukebox');
+              setBedsideHardwareTrigger((prev) => prev + 1);
+            }}
             onNavigateTab={(t) => {
               if (t === 'interview') setInterviewStartBlank(false);
               setActiveTab(t);
@@ -1125,6 +1144,7 @@ export default function MagicJukeboxApp() {
             }}
             initialVibeMode={initialVibeMode}
             initialBedsideGiantMode={initialBedsideGiantMode}
+            openBedsideHardwareTrigger={bedsideHardwareTrigger}
           />
         )}
 

@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquareHeart,
+  Printer,
 } from 'lucide-react';
 import { PatientProfile } from '@/lib/iso-sequencer';
 
@@ -23,6 +24,7 @@ interface LandingHomeViewProps {
   onExploreDemo: () => void;
   onOpenTutorial: () => void;
   onOpenFeedback?: () => void;
+  onOpenBedsideHardware?: () => void;
   onNavigateTab: (tab: 'jukebox' | 'interview' | 'detective' | 'telemetry' | 'science') => void;
 }
 
@@ -33,6 +35,7 @@ export default function LandingHomeView({
   onExploreDemo,
   onOpenTutorial,
   onOpenFeedback,
+  onOpenBedsideHardware,
   onNavigateTab,
 }: LandingHomeViewProps) {
   const [showMoreTools, setShowMoreTools] = useState(false);
@@ -153,7 +156,23 @@ export default function LandingHomeView({
         </button>
 
         {showMoreTools && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-wildwoods-parchment">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-wildwoods-parchment">
+            {onOpenBedsideHardware && (
+              <button
+                type="button"
+                onClick={onOpenBedsideHardware}
+                className="p-4 rounded-2xl bg-wildwoods-cream hover:bg-wildwoods-parchment border border-wildwoods-sand text-left transition space-y-1"
+              >
+                <div className="font-bold text-sm text-wildwoods-slate flex items-center gap-2">
+                  <Printer className="w-4 h-4 text-wildwoods-amber" />
+                  Bedside Cards &amp; Easy-Button
+                </div>
+                <p className="text-xs text-slate-600">
+                  1-button screen, printable QR/NFC cards &amp; 3-button radio USB setup.
+                </p>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => onNavigateTab('detective')}
