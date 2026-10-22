@@ -9,16 +9,16 @@ import {
   CheckCircle2,
   Download,
   Upload,
-  Music,
   Sparkles,
   Play,
   Settings,
   Radio,
   Printer,
   QrCode,
+  Tv,
+  ChevronDown,
 } from 'lucide-react';
 import {
-  BiographicalTrack,
   IsoTrajectoryResult,
   PatientProfile,
   SequencedTrack,
@@ -33,11 +33,20 @@ import {
   printBedsideCardsOnly,
 } from '@/lib/share-and-export';
 import {
+  MintedSpotifyPlaylist,
+  createCentralSpotifyPlaylist,
   createFullLengthSpotifyPlaylist,
   exchangeSpotifyCodeIfPresent,
   getConfiguredSpotifyClientId,
+  getSavedSpotifyRefreshToken,
   startSpotifyPkceAuth,
 } from '@/lib/spotify-export';
+import {
+  buildEmbeddedContinuousPlayerUrl,
+  buildInstantYoutubePlaylistUrl,
+  getDirectAppleMusicLinks,
+  hydrateYoutubeVideoIdsForTracks,
+} from '@/lib/full-length-player';
 
 interface FullLengthExportModalProps {
   isOpen: boolean;
@@ -48,6 +57,7 @@ interface FullLengthExportModalProps {
   onAttachFullAudioFile?: (trackId: string, fileUrl: string, fileName: string) => void;
   onOpenGiantButtonMode?: () => void;
   onTriggerBedsideCardVibe?: (vibe: 'upbeat' | 'arc' | 'relaxing') => void;
+  onSwitchToInAppFullPlayer?: () => void;
 }
 
 export default function FullLengthExportModal({
@@ -59,39 +69,76 @@ export default function FullLengthExportModal({
   onAttachFullAudioFile,
   onOpenGiantButtonMode,
   onTriggerBedsideCardVibe,
+  onSwitchToInAppFullPlayer,
 }: FullLengthExportModalProps) {
   const [modalTab, setModalTab] = useState<'streaming' | 'hardware'>(initialTab);
+  const [copiedTracklist, setCopiedTracklist] = useState(false);
+  const [copiedPlaylistLink, setCopiedPlaylistLink] = useState(false);
+  const [copiedUsbGuide, setCopiedUsbGuide] = useState(false);
+  const [copiedNfcVibe, setCopiedNfcVibe] = useState<string | null>(null);
+  const [copiedRefreshToken, setCopiedRefreshToken] = useState(false);
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
+  const [savedRefreshToken, setSavedRefreshToken] = useState<string | null>(null);
+  const [showSpotifyClientConfig, setShowSpotifyClientConfig] = useState(false);
+  const [customClientId, setCustomClientId] = useState('');
+  const [isCreatingSpotify, setIsCreatingSpotify] = useState(false);
+  const [createdSpotifyPlaylist, setCreatedSpotifyPlaylist] =
+    useState<MintedSpotifyPlaylist | null>(null);
+  const [spotifyStatusMessage, setSpotifyStatusMessage] = useState<string | null>(null);
+  const [attachedFilesMap, setAttachedFilesMap] = useState<Record<string, string>>({});
+  const [resolvedYtMap, setResolvedYtMap] = useState<Record<string, string>>({});
+  const [showEmbeddedContinuousPlayer, setShowEmbeddedContinuousPlayer] = useState(false);
+  const [qrTargetMode, setQrTargetMode] = useState<'instant_playlist' | 'spotify'>('instant_playlist');
 
   useEffect(() => {
     if (isOpen) {
       setModalTab(initialTab);
     }
   }, [isOpen, initialTab]);
-  const [copiedTracklist, setCopiedTracklist] = useState(false);
-  const [copiedUsbGuide, setCopiedUsbGuide] = useState(false);
-  const [copiedNfcVibe, setCopiedNfcVibe] = useState<string | null>(null);
-  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
-  const [showSpotifyClientConfig, setShowSpotifyClientConfig] = useState(false);
-  const [customClientId, setCustomClientId] = useState('');
-  const [isCreatingSpotify, setIsCreatingSpotify] = useState(false);
-  const [createdSpotifyPlaylist, setCreatedSpotifyPlaylist] = useState<{
-    playlistUrl: string;
-    matchedCount: number;
-    playlistName: string;
-  } | null>(null);
-  const [spotifyStatusMessage, setSpotifyStatusMessage] = useState<string | null>(null);
-  const [attachedFilesMap, setAttachedFilesMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setCustomClientId(getConfiguredSpotifyClientId());
+    setSavedRefreshToken(getSavedSpotifyRefreshToken());
     exchangeSpotifyCodeIfPresent().then((token) => {
-      if (token) setSpotifyToken(token);
+      if (token) {
+        setSpotifyToken(token);
+        setSavedRefreshToken(getSavedSpotifyRefreshToken());
+      }
     });
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    hydrateYoutubeVideoIdsForTracks(trajectory.orderedTracks).then((map) => {
+      setResolvedYtMap(map);
+    });
+  }, [isOpen, trajectory.orderedTracks]);
 
   if (!isOpen) return null;
 
   const orderedTracks = trajectory.orderedTracks;
+  const instantMultiSongPlaylistUrl = buildInstantYoutubePlaylistUrl(orderedTracks, resolvedYtMap);
+  const embeddedContinuousUrl = buildEmbeddedContinuousPlayerUrl(
+    orderedTracks,
+    orderedTracks[0]?.id,
+    resolvedYtMap,
+    true
+  );
+
+  const activeQrUrl =
+    qrTargetMode === 'spotify' && createdSpotifyPlaylist?.playlistUrl
+      ? createdSpotifyPlaylist.playlistUrl
+      : instantMultiSongPlaylistUrl;
+
+  const handleCopyInstantPlaylistLink = async (urlToCopy: string) => {
+    try {
+      await navigator.clipboard.writeText(urlToCopy);
+      setCopiedPlaylistLink(true);
+      setTimeout(() => setCopiedPlaylistLink(false), 4000);
+    } catch {
+      // Ignore clipboard error
+    }
+  };
 
   const handleCopyTracklistForSpotify = async () => {
     const text = formatSpotifyImportTracklist(trajectory);
@@ -174,38 +221,55 @@ export default function FullLengthExportModal({
 
   const handleDirectSpotifyExport = async () => {
     setSpotifyStatusMessage(null);
-    if (spotifyToken) {
-      setIsCreatingSpotify(true);
-      try {
+    setIsCreatingSpotify(true);
+
+    try {
+      // 1. Try zero-login Central Magic Jukebox Spotify Service first
+      const centralRes = await createCentralSpotifyPlaylist(
+        patient,
+        orderedTracks,
+        trajectory.targetState.label
+      );
+      if (centralRes.ok && centralRes.result) {
+        setCreatedSpotifyPlaylist(centralRes.result);
+        setQrTargetMode('spotify');
+        setIsCreatingSpotify(false);
+        return;
+      }
+
+      // 2. Next, if a browser Spotify token is present, mint directly via PKCE
+      if (spotifyToken) {
         const result = await createFullLengthSpotifyPlaylist(
           spotifyToken,
           patient,
           trajectory
         );
         setCreatedSpotifyPlaylist(result);
-      } catch (err) {
-        setSpotifyToken(null);
-        setSpotifyStatusMessage(
-          err instanceof Error ? err.message : 'Could not export to Spotify.'
-        );
-      } finally {
+        setQrTargetMode('spotify');
         setIsCreatingSpotify(false);
+        return;
       }
-      return;
-    }
 
-    const clientId = customClientId.trim() || getConfiguredSpotifyClientId();
-    if (!clientId) {
-      // Copy tracklist automatically and open TuneMyMusic / Spotify importer or show Client ID box
-      await handleCopyTracklistForSpotify();
+      // 3. Otherwise, if a Client ID is configured, start 1-click PKCE auth
+      const clientId = customClientId.trim() || getConfiguredSpotifyClientId();
+      if (clientId) {
+        await startSpotifyPkceAuth(clientId);
+        return;
+      }
+
+      // 4. If neither central env vars nor Client ID is set yet, open the 1-time admin setup drawer
       setShowSpotifyClientConfig(true);
       setSpotifyStatusMessage(
-        '✓ Copied your ordered tracklist! Paste it into Spotify or TuneMyMusic below—or enter a Spotify Client ID for 1-click OAuth creation.'
+        'To enable 1-click Spotify playlist links & QR codes, connect the central Magic Jukebox Spotify account below—or use the Instant Multi-Song Playlist button right next to it (zero login needed!).'
       );
-      return;
+    } catch (err) {
+      setSpotifyToken(null);
+      setSpotifyStatusMessage(
+        err instanceof Error ? err.message : 'Could not build Spotify playlist.'
+      );
+    } finally {
+      setIsCreatingSpotify(false);
     }
-
-    await startSpotifyPkceAuth(clientId);
   };
 
   const handleFileUploadForTrack = (
@@ -247,7 +311,7 @@ export default function FullLengthExportModal({
               <div className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-wildwoods-gold truncate">
                 {modalTab === 'hardware'
                   ? 'Bedside Cards, 1-Button Screen & Physical Players'
-                  : 'Full-Length Playlist'}
+                  : 'Instant Full-Length Playlist & QR Code'}
               </div>
               <h2
                 id="full-length-export-title"
@@ -283,7 +347,8 @@ export default function FullLengthExportModal({
               </span>
             </div>
             <span className="font-extrabold text-wildwoods-sage">
-              {orderedTracks.length} Songs ({patient.birthYear + 10}–{patient.birthYear + 30} Era)
+              {orderedTracks.length} Full Songs ({patient.birthYear + 10}–{patient.birthYear + 30}{' '}
+              Era)
             </span>
           </div>
 
@@ -298,7 +363,7 @@ export default function FullLengthExportModal({
               }`}
             >
               <Disc3 className="w-4 h-4 shrink-0" />
-              1. Spotify, Apple &amp; Full Songs
+              1. Instant Playlist Link, QR &amp; Full Songs
             </button>
 
             <button
@@ -317,7 +382,7 @@ export default function FullLengthExportModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-5 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {modalTab === 'hardware' ? (
             <div className="space-y-5">
               {/* HARDWARE OPTION 1: GIANT 1-BUTTON SCREEN & BLUETOOTH / USB BUTTONS */}
@@ -336,9 +401,10 @@ export default function FullLengthExportModal({
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   For a loved one who cannot use menus or small buttons, open our{' '}
-                  <strong>Giant 1-Button Bedside Screen</strong> (tapping anywhere on the screen starts
-                  or pauses the music). You can also pair any <strong>$15 Bluetooth media button</strong>{' '}
-                  or <strong>USB dome switch</strong>—pressing it automatically plays/pauses the music!
+                  <strong>Giant 1-Button Bedside Screen</strong> (tapping anywhere on the screen
+                  starts or pauses the music). You can also pair any{' '}
+                  <strong>$15 Bluetooth media button</strong> or <strong>USB dome switch</strong>
+                  —pressing it automatically plays/pauses the music!
                 </p>
 
                 {onOpenGiantButtonMode && (
@@ -368,9 +434,9 @@ export default function FullLengthExportModal({
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                     Have a physical <strong>Relish Radio</strong> or <strong>SMPL Player</strong>?
                     Download {patient.preferredName}’s 3-Button USB folder list (organized into{' '}
-                    <strong>Button 1: Cheerful</strong>, <strong>Button 2: Afternoon Calm</strong>, and{' '}
-                    <strong>Button 3: Peaceful Rest</strong>) with a cut-out paper label for the top of
-                    the radio.
+                    <strong>Button 1: Cheerful</strong>, <strong>Button 2: Afternoon Calm</strong>,
+                    and <strong>Button 3: Peaceful Rest</strong>) with a cut-out paper label for the
+                    top of the radio.
                   </p>
                 </div>
 
@@ -427,9 +493,9 @@ export default function FullLengthExportModal({
                 </div>
 
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Click <strong>Open &amp; Play Card</strong> below to launch that bedside card right
-                  now, scan the QR code with a phone camera, or click <strong>Copy NFC Link</strong> to
-                  paste onto a $0.40 NFC photo sticker:
+                  Click <strong>Open &amp; Play Card</strong> below to launch that bedside card
+                  right now, scan the QR code with a phone camera, or click{' '}
+                  <strong>Copy NFC Link</strong> to paste onto a $0.40 NFC photo sticker:
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -522,249 +588,384 @@ export default function FullLengthExportModal({
             </div>
           ) : (
             <>
-          {/* OPTION 1: EXPORT TO SPOTIFY / APPLE MUSIC */}
-          <section className="bg-white rounded-2xl p-5 border-2 border-emerald-600/40 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-extrabold uppercase tracking-wider">
-                  Option 1 • Full-Length Streaming Playlist
-                </span>
-                <h3 className="text-lg sm:text-xl font-serif font-bold text-wildwoods-slate mt-1">
-                  Export Ordered Playlist to Spotify or Apple Music
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600">
-                  Saves all {orderedTracks.length} songs in their exact mood-to-calm order so they
-                  play full-length from start to finish.
-                </p>
-              </div>
-            </div>
-
-            {createdSpotifyPlaylist && (
-              <div className="p-4 rounded-2xl bg-emerald-950 text-emerald-100 border-2 border-emerald-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="font-extrabold text-sm flex items-center gap-2 text-emerald-300">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Created “{createdSpotifyPlaylist.playlistName}” ({createdSpotifyPlaylist.matchedCount}{' '}
-                    full tracks)
+              {/* HERO CARD: 1-TAP FULL-LENGTH PLAYLIST LAUNCHER + SCANNABLE QR CODE */}
+              <section className="bg-white rounded-2xl p-5 border-2 border-emerald-600/50 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-950 text-[11px] font-extrabold uppercase tracking-wider">
+                      Zero CSVs • Zero Copy-Paste • Plays Full Songs Immediately
+                    </span>
+                    <h3 className="text-lg sm:text-xl font-serif font-bold text-wildwoods-slate">
+                      1-Tap Full-Length Playlist Link &amp; Phone QR Code
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Tap a button below or scan the QR code with any phone camera to automatically
+                      open and play all <strong>{orderedTracks.length} full-length songs</strong> in
+                      their exact calming sequence:
+                    </p>
                   </div>
-                  <p className="text-xs text-emerald-200">
-                    Your playlist is ready in your Spotify account!
-                  </p>
+
+                  {/* Live Scannable Playlist QR Code */}
+                  <div className="flex items-center gap-3 bg-wildwoods-cream p-3 rounded-2xl border-2 border-wildwoods-sand shrink-0 self-center sm:self-auto">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=${encodeURIComponent(
+                        activeQrUrl
+                      )}`}
+                      alt="Scan to open full-length playlist on phone"
+                      className="w-20 h-20 rounded-xl border border-wildwoods-sand bg-white p-1 shrink-0"
+                    />
+                    <div className="text-xs space-y-1 max-w-[135px]">
+                      <div className="font-extrabold text-wildwoods-slate flex items-center gap-1">
+                        <QrCode className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        Scan with Phone
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-tight">
+                        {qrTargetMode === 'spotify' && createdSpotifyPlaylist
+                          ? 'Opens your unlisted Spotify playlist'
+                          : `Auto-builds & plays all ${orderedTracks.length} full songs`}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyInstantPlaylistLink(activeQrUrl)}
+                        className="text-[11px] font-bold text-emerald-800 hover:underline flex items-center gap-1"
+                      >
+                        {copiedPlaylistLink ? '✓ Copied Link!' : 'Copy Playlist Link'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <a
-                  href={createdSpotifyPlaylist.playlistUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shrink-0"
-                >
-                  Open in Spotify App
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            )}
 
-            {spotifyStatusMessage && (
-              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-semibold">
-                {spotifyStatusMessage}
-              </div>
-            )}
+                {/* Primary 1-Tap Action Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* 1. Instant Multi-Song Full Playlist (Zero Login Required) */}
+                  <a
+                    href={instantMultiSongPlaylistUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setQrTargetMode('instant_playlist')}
+                    className="min-h-[54px] px-4 py-3 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-sm flex items-center justify-center gap-2 shadow-md transition text-center"
+                  >
+                    <Play className="w-5 h-5 fill-current shrink-0" />
+                    <span>
+                      Play Full {orderedTracks.length}-Song Playlist Now (No Login)
+                    </span>
+                    <ExternalLink className="w-4 h-4 shrink-0" />
+                  </a>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                disabled={isCreatingSpotify}
-                onClick={handleDirectSpotifyExport}
-                className="min-h-[52px] px-5 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-md transition"
-              >
-                <Disc3 className="w-5 h-5" />
-                {isCreatingSpotify
-                  ? 'Creating Spotify Playlist...'
-                  : spotifyToken
-                  ? '1-Click Create Playlist in My Spotify'
-                  : 'Export Playlist to Spotify'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyTracklistForSpotify}
-                className="min-h-[52px] px-5 py-3 rounded-2xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-gold font-extrabold text-sm flex items-center justify-center gap-2 shadow-md transition"
-              >
-                {copiedTracklist ? (
-                  <>
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    Copied All {orderedTracks.length} Songs!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy Ordered Song List (Title – Artist)
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-wildwoods-parchment text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDownloadPlaylistFile('csv')}
-                  className="px-3 py-1.5 rounded-xl bg-wildwoods-cream hover:bg-wildwoods-parchment border border-wildwoods-sand font-bold text-wildwoods-slate flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download .CSV (Spotify / Apple Importers)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDownloadPlaylistFile('m3u')}
-                  className="px-3 py-1.5 rounded-xl bg-wildwoods-cream hover:bg-wildwoods-parchment border border-wildwoods-sand font-bold text-wildwoods-slate flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download .M3U Playlist
-                </button>
-                <a
-                  href="https://www.tunemymusic.com/transfer/file-to-spotify"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleCopyTracklistForSpotify}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 font-bold text-emerald-950 flex items-center gap-1"
-                >
-                  Paste into TuneMyMusic → Spotify
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowSpotifyClientConfig((prev) => !prev)}
-                className="text-slate-500 hover:text-wildwoods-slate underline flex items-center gap-1"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                Spotify API Settings
-              </button>
-            </div>
-
-            {showSpotifyClientConfig && (
-              <div className="p-4 rounded-xl bg-wildwoods-parchment/80 border border-wildwoods-sand space-y-2 text-xs">
-                <label className="block font-bold text-wildwoods-slate">
-                  Optional: Direct Spotify Web API Client ID (OAuth 2.0 PKCE)
-                </label>
-                <p className="text-slate-600">
-                  To create playlists directly in 1 click without copying text, paste a free{' '}
-                  <code>Spotify Client ID</code> from developer.spotify.com (with Redirect URI set to{' '}
-                  <code>{typeof window !== 'undefined' ? window.location.origin : ''}</code>):
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customClientId}
-                    onChange={(e) => setCustomClientId(e.target.value)}
-                    placeholder="Paste Spotify Client ID..."
-                    className="flex-1 min-h-[40px] px-3 py-1.5 rounded-xl bg-white border border-wildwoods-sand font-mono text-xs"
-                  />
+                  {/* 2. 1-Tap Spotify Playlist Generator (Central Account or Connected Spotify) */}
                   <button
                     type="button"
-                    onClick={() => startSpotifyPkceAuth(customClientId)}
-                    className="px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold"
+                    disabled={isCreatingSpotify}
+                    onClick={handleDirectSpotifyExport}
+                    className="min-h-[54px] px-4 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-md transition"
                   >
-                    Connect Spotify
+                    <Disc3 className="w-5 h-5 shrink-0" />
+                    <span>
+                      {isCreatingSpotify
+                        ? 'Building Spotify Playlist...'
+                        : createdSpotifyPlaylist
+                        ? 'Rebuild Spotify Playlist & QR'
+                        : '1-Tap Open Playlist in Spotify'}
+                    </span>
                   </button>
                 </div>
-              </div>
-            )}
-          </section>
 
-          {/* OPTION 2: LOAD FULL-LENGTH MP3/M4A FOR TEMPO & PARKINSON'S PACE MATCHER */}
-          <section className="bg-white rounded-2xl p-5 border-2 border-wildwoods-sand shadow-sm space-y-3">
-            <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-extrabold uppercase tracking-wider">
-                Option 2 • Works with Tempo &amp; Parkinson’s Pace Slider!
-              </span>
-              <h3 className="text-lg font-serif font-bold text-wildwoods-slate mt-1">
-                Play Full-Length Songs in Browser (or Attach MP3/M4A Files)
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600">
-                Click <strong>Spotify</strong> or <strong>YouTube</strong> on any song below to play
-                it full-length—or click <strong>📂 Load MP3/Audio</strong> to attach a full song file
-                from your device so you can adjust its speed (`65%–135%`) with our Parkinson’s Pace
-                Matcher!
-              </p>
-            </div>
-
-            <div className="divide-y divide-wildwoods-parchment border border-wildwoods-sand rounded-2xl overflow-hidden">
-              {orderedTracks.map((track, idx) => {
-                const links = getFullSongStreamingLinks(track);
-                const attachedFileName = attachedFilesMap[track.id];
-                return (
-                  <div
-                    key={track.id}
-                    className="p-3.5 bg-wildwoods-cream/50 hover:bg-wildwoods-parchment/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                {/* In-App Continuous Full-Song Player Button */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSwitchToInAppFullPlayer) {
+                        onClose();
+                        onSwitchToInAppFullPlayer();
+                      } else {
+                        setShowEmbeddedContinuousPlayer((prev) => !prev);
+                      }
+                    }}
+                    className="w-full sm:w-auto min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-gold font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-7 h-7 rounded-full bg-wildwoods-slate text-wildwoods-gold font-extrabold text-xs flex items-center justify-center shrink-0">
-                        {idx + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm text-wildwoods-slate truncate">
-                          {track.title}
+                    <Tv className="w-4 h-4 text-wildwoods-amber shrink-0" />
+                    Play All {orderedTracks.length} Full-Length Songs Right Inside the Jukebox
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSpotifyClientConfig((prev) => !prev)}
+                    className="text-xs text-slate-500 hover:text-wildwoods-slate underline flex items-center gap-1"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    Central Spotify Account Setup
+                  </button>
+                </div>
+
+                {/* Created Spotify Playlist Banner + Embedded Player */}
+                {createdSpotifyPlaylist && (
+                  <div className="p-4 rounded-2xl bg-emerald-950 text-emerald-100 border-2 border-emerald-400 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="font-extrabold text-sm flex items-center gap-2 text-emerald-300">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          Ready: “{createdSpotifyPlaylist.playlistName}” (
+                          {createdSpotifyPlaylist.matchedCount} full tracks)
                         </div>
-                        <div className="text-xs text-slate-600 truncate">
-                          {track.artist} ({track.year}) • {track.bpm} BPM
-                        </div>
-                        {attachedFileName && (
-                          <div className="text-[11px] font-bold text-emerald-800 mt-0.5">
-                            ✓ Loaded Full Audio: {attachedFileName}
-                          </div>
-                        )}
+                        <p className="text-xs text-emerald-200">
+                          Unlisted &amp; privacy-safe • Tap to launch in the Spotify app or scan the
+                          QR code above!
+                        </p>
                       </div>
+                      <a
+                        href={createdSpotifyPlaylist.playlistUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shrink-0"
+                      >
+                        Open in Spotify App
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                      <a
-                        href={links.spotifyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1"
-                      >
-                        Spotify
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                      <a
-                        href={links.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-bold flex items-center gap-1"
-                      >
-                        YouTube
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                      <a
-                        href={links.appleMusicUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-cream text-xs font-bold flex items-center gap-1"
-                      >
-                        Apple
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                    {createdSpotifyPlaylist.embedUrl && (
+                      <iframe
+                        title="Spotify Full Playlist Player"
+                        src={createdSpotifyPlaylist.embedUrl}
+                        width="100%"
+                        height="152"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        className="rounded-xl border border-emerald-700"
+                      />
+                    )}
+                  </div>
+                )}
 
-                      {onAttachFullAudioFile && (
-                        <label className="px-2.5 py-1.5 rounded-lg bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate text-xs font-extrabold flex items-center gap-1 cursor-pointer">
-                          <Upload className="w-3 h-3" />
-                          Load MP3
-                          <input
-                            type="file"
-                            accept="audio/*"
-                            onChange={(e) => handleFileUploadForTrack(track, e)}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
+                {showEmbeddedContinuousPlayer && embeddedContinuousUrl && (
+                  <div className="p-3 rounded-2xl bg-wildwoods-slate text-wildwoods-cream space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-wildwoods-gold">
+                      <span>
+                        ▶ Continuous Full-Length Playlist ({orderedTracks.length} Songs in Order)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmbeddedContinuousPlayer(false)}
+                        className="underline text-wildwoods-mint"
+                      >
+                        Hide Player
+                      </button>
+                    </div>
+                    <div className="aspect-video w-full rounded-xl overflow-hidden border border-wildwoods-moss bg-black">
+                      <iframe
+                        title="Continuous Full-Length Playlist Player"
+                        src={embeddedContinuousUrl}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
+                )}
+
+                {spotifyStatusMessage && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-semibold">
+                    {spotifyStatusMessage}
+                  </div>
+                )}
+
+                {/* Central Magic Jukebox Spotify Admin Setup Drawer */}
+                {showSpotifyClientConfig && (
+                  <div className="p-4 rounded-xl bg-wildwoods-parchment/90 border border-wildwoods-sand space-y-3 text-xs">
+                    <div className="font-extrabold text-wildwoods-slate">
+                      Central Magic Jukebox Spotify Account Setup (1-Time Admin Configuration)
+                    </div>
+                    <p className="text-slate-600 leading-relaxed">
+                      Connect your central <strong>Magic Jukebox</strong> Spotify account once so
+                      every family gets instant, unlisted (<code>public: false</code>),
+                      de-identified Spotify playlist links &amp; QR codes with zero user login:
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={customClientId}
+                        onChange={(e) => setCustomClientId(e.target.value)}
+                        placeholder="Paste Spotify Client ID from developer.spotify.com..."
+                        className="flex-1 min-h-[40px] px-3 py-1.5 rounded-xl bg-white border border-wildwoods-sand font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => startSpotifyPkceAuth(customClientId)}
+                        className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold shrink-0"
+                      >
+                        {spotifyToken
+                          ? 'Reconnect Spotify Account'
+                          : 'Connect Central Spotify Account'}
+                      </button>
+                    </div>
+
+                    {savedRefreshToken && (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 space-y-1.5">
+                        <div className="font-bold text-emerald-950 flex items-center justify-between">
+                          <span>✓ Central Account Connected in This Browser!</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(savedRefreshToken);
+                              setCopiedRefreshToken(true);
+                              setTimeout(() => setCopiedRefreshToken(false), 4000);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-700 text-white text-[11px] font-bold"
+                          >
+                            {copiedRefreshToken
+                              ? '✓ Copied Refresh Token!'
+                              : 'Copy SPOTIFY_CENTRAL_REFRESH_TOKEN'}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-emerald-900">
+                          To enable zero-login server playlists for all visitors on Netlify, paste{' '}
+                          <code>SPOTIFY_CENTRAL_CLIENT_ID</code> and{' '}
+                          <code>SPOTIFY_CENTRAL_REFRESH_TOKEN</code> into your Netlify Environment
+                          Variables.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* SECTION 2: DIRECT FULL-SONG LINKS (APPLE MUSIC, SPOTIFY, YOUTUBE) + LOCAL MP3 FOR PACE SLIDER */}
+              <section className="bg-white rounded-2xl p-5 border-2 border-wildwoods-sand shadow-sm space-y-3">
+                <div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-extrabold uppercase tracking-wider">
+                    Direct Apple Music, Spotify &amp; Tempo-Slider Audio
+                  </span>
+                  <h3 className="text-lg font-serif font-bold text-wildwoods-slate mt-1">
+                    Open Any Track in Apple Music / Spotify (or Attach MP3 for Pace Matcher)
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600">
+                    Tap <strong>Apple Music</strong>, <strong>Spotify</strong>, or{' '}
+                    <strong>YouTube</strong> on any song below to open the full track directly—or
+                    click <strong>Load MP3</strong> if you want to adjust a full song’s tempo (
+                    <code>65%–135%</code>) with our Parkinson’s Pace Matcher.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-wildwoods-parchment border border-wildwoods-sand rounded-2xl overflow-hidden">
+                  {orderedTracks.map((track, idx) => {
+                    const links = getFullSongStreamingLinks(track);
+                    const appleDirect = getDirectAppleMusicLinks(track);
+                    const attachedFileName = attachedFilesMap[track.id];
+                    return (
+                      <div
+                        key={track.id}
+                        className="p-3.5 bg-wildwoods-cream/50 hover:bg-wildwoods-parchment/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="w-7 h-7 rounded-full bg-wildwoods-slate text-wildwoods-gold font-extrabold text-xs flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-wildwoods-slate truncate">
+                              {track.title}
+                            </div>
+                            <div className="text-xs text-slate-600 truncate">
+                              {track.artist} ({track.year}) • {track.bpm} BPM
+                            </div>
+                            {attachedFileName && (
+                              <div className="text-[11px] font-bold text-emerald-800 mt-0.5">
+                                ✓ Loaded Full Audio: {attachedFileName}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                          <a
+                            href={appleDirect.webUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1.5 rounded-lg bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-cream text-xs font-bold flex items-center gap-1"
+                          >
+                            Apple Music
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <a
+                            href={links.spotifyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1"
+                          >
+                            Spotify
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <a
+                            href={links.youtubeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-bold flex items-center gap-1"
+                          >
+                            Full Song
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+
+                          {onAttachFullAudioFile && (
+                            <label className="px-2.5 py-1.5 rounded-lg bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate text-xs font-extrabold flex items-center gap-1 cursor-pointer">
+                              <Upload className="w-3 h-3" />
+                              Load MP3
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                onChange={(e) => handleFileUploadForTrack(track, e)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* COLLAPSED ADVANCED / RAW FILE EXPORTS (HIDDEN BY DEFAULT SO USERS NEVER HAVE TO DEAL WITH CSVs) */}
+              <details className="bg-wildwoods-parchment/70 rounded-2xl border border-wildwoods-sand p-4 text-xs">
+                <summary className="font-bold text-slate-600 cursor-pointer flex items-center justify-between">
+                  <span>Advanced Options: Copy Text List or Download Raw .CSV / .M3U Files</span>
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                </summary>
+                <div className="pt-3 mt-3 border-t border-wildwoods-sand flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyTracklistForSpotify}
+                    className="px-3 py-2 rounded-xl bg-wildwoods-slate text-wildwoods-gold font-bold flex items-center gap-1.5"
+                  >
+                    {copiedTracklist ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        Copied All {orderedTracks.length} Songs!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy Ordered Song List (Title – Artist)
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPlaylistFile('csv')}
+                    className="px-3 py-2 rounded-xl bg-white border border-wildwoods-sand font-bold text-wildwoods-slate flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download .CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPlaylistFile('m3u')}
+                    className="px-3 py-2 rounded-xl bg-white border border-wildwoods-sand font-bold text-wildwoods-slate flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download .M3U
+                  </button>
+                </div>
+              </details>
             </>
           )}
         </div>

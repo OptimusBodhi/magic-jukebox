@@ -5,6 +5,7 @@ import {
   PatientProfile,
   TargetTherapeuticStateId,
 } from './iso-sequencer';
+import { getResolvedYoutubeVideoId } from './full-length-player';
 
 export interface CompactSharedPayload {
   v: 1;
@@ -150,14 +151,31 @@ export function decodeShareableJukeboxParam(encodedParam: string): {
 
 /**
  * Generates 1-click full-length song links for Spotify, Apple Music, and YouTube Music.
+ * Uses direct Apple Music song URLs and verified YouTube videoIds when available.
  */
-export function getFullSongStreamingLinks(track: { title: string; artist: string; year?: number }) {
+export function getFullSongStreamingLinks(track: {
+  title: string;
+  artist: string;
+  year?: number;
+  appleMusicUrl?: string;
+  youtubeVideoId?: string;
+}) {
   const query = encodeURIComponent(`${track.artist} ${track.title}`);
+  const ytId = getResolvedYoutubeVideoId(track);
+  const directAppleUrl =
+    track.appleMusicUrl && track.appleMusicUrl.startsWith('http')
+      ? track.appleMusicUrl.replace('itunes.apple.com', 'music.apple.com')
+      : `https://music.apple.com/us/search?term=${query}`;
+
   return {
     spotifyUrl: `https://open.spotify.com/search/${query}`,
-    appleMusicUrl: `https://music.apple.com/us/search?term=${query}`,
-    youtubeUrl: `https://www.youtube.com/results?search_query=${query}+official+audio`,
-    youtubeMusicUrl: `https://music.youtube.com/search?q=${query}`,
+    appleMusicUrl: directAppleUrl,
+    youtubeUrl: ytId
+      ? `https://www.youtube.com/watch?v=${ytId}`
+      : `https://www.youtube.com/results?search_query=${query}+official+audio`,
+    youtubeMusicUrl: ytId
+      ? `https://music.youtube.com/watch?v=${ytId}`
+      : `https://music.youtube.com/search?q=${query}`,
   };
 }
 

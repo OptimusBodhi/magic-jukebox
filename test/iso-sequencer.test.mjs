@@ -118,6 +118,33 @@ test('Public Beta feedback system & bedside wake-lock reliability exist and are 
   assert.match(jukeboxSrc, /Giant 1-Button Mode/);
 });
 
+test('Central Spotify Playlist serverless function, Instant Full-Length Multi-Song Playlist URL & In-App Continuous Player exist and enforce privacy safe-harbor', () => {
+  const centralFnPath = path.resolve('netlify/functions/spotify-central-playlist.mjs');
+  const ytFnPath = path.resolve('netlify/functions/youtube-playlist.mjs');
+  const fullPlayerLibPath = path.resolve('src/lib/full-length-player.ts');
+
+  assert.equal(fs.existsSync(centralFnPath), true, 'spotify-central-playlist.mjs must exist');
+  assert.equal(fs.existsSync(ytFnPath), true, 'youtube-playlist.mjs must exist');
+  assert.equal(fs.existsSync(fullPlayerLibPath), true, 'src/lib/full-length-player.ts must exist');
+
+  const centralFnSrc = fs.readFileSync(centralFnPath, 'utf8');
+  assert.match(centralFnSrc, /SPOTIFY_CENTRAL_REFRESH_TOKEN/);
+  assert.match(centralFnSrc, /public:\s*false/); // Unlisted privacy safe-harbor
+
+  const fullPlayerSrc = fs.readFileSync(fullPlayerLibPath, 'utf8');
+  assert.match(fullPlayerSrc, /buildInstantYoutubePlaylistUrl/);
+  assert.match(fullPlayerSrc, /watch_videos\?video_ids=/);
+  assert.match(fullPlayerSrc, /buildEmbeddedContinuousPlayerUrl/);
+  assert.match(fullPlayerSrc, /getDirectAppleMusicLinks/);
+
+  const spotifyLib = fs.readFileSync(path.resolve('src/lib/spotify-export.ts'), 'utf8');
+  assert.match(spotifyLib, /createCentralSpotifyPlaylist/);
+
+  const jukeboxSrc = fs.readFileSync(path.resolve('src/components/IsoJukeboxView.tsx'), 'utf8');
+  assert.match(jukeboxSrc, /Play Full-Length Songs \(In-App\)/);
+});
+
+
 
 
 

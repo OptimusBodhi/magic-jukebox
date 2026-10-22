@@ -40,6 +40,9 @@ import {
   TrendingDown,
   HelpCircle,
   MessageSquareHeart,
+  QrCode,
+  Tv,
+  Disc3,
 } from 'lucide-react';
 import {
   CURRENT_EMOTIONAL_STATES,
@@ -55,6 +58,11 @@ import {
 } from '@/lib/iso-sequencer';
 import { getFullSongStreamingLinks } from '@/lib/share-and-export';
 import { ItunesCandidateTrack, searchItunesTracks } from '@/lib/itunes-audio';
+import {
+  buildEmbeddedContinuousPlayerUrl,
+  buildInstantYoutubePlaylistUrl,
+  hydrateYoutubeVideoIdsForTracks,
+} from '@/lib/full-length-player';
 import FullLengthExportModal from '@/components/FullLengthExportModal';
 
 interface IsoJukeboxViewProps {
@@ -239,6 +247,14 @@ export default function IsoJukeboxView({
   const [showAdvancedSequencer, setShowAdvancedSequencer] = useState(false);
   const [isFullLengthExportOpen, setIsFullLengthExportOpen] = useState(false);
   const [exportModalInitialTab, setExportModalInitialTab] = useState<'streaming' | 'hardware'>('streaming');
+  const [inAppFullPlayerMode, setInAppFullPlayerMode] = useState(false);
+  const [resolvedYtMap, setResolvedYtMap] = useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    hydrateYoutubeVideoIdsForTracks(trajectory.orderedTracks).then((map) => {
+      setResolvedYtMap(map);
+    });
+  }, [trajectory.orderedTracks]);
 
   React.useEffect(() => {
     if (initialVibeMode) {
@@ -389,6 +405,8 @@ export default function IsoJukeboxView({
       itunesQuery: `${cand.artist} ${cand.title}`,
       previewUrl: cand.previewUrl,
       artworkUrl: cand.artworkUrl,
+      appleMusicUrl: cand.appleMusicUrl,
+      appleTrackId: cand.appleTrackId,
       epochLabel: getTrackEpochLabel(cand.year, patient.birthYear),
     };
 
@@ -1327,14 +1345,102 @@ export default function IsoJukeboxView({
                 </div>
               )}
 
-              {/* Audio Scrubber & Big Simple Transport Buttons */}
+              {/* Audio Scrubber & Big Simple Transport Buttons + 1-Tap Full-Length Continuous Mode */}
               <div className="space-y-3 pt-1">
+                {/* 1-Tap Full-Length Continuous Player vs 30s Sample Bar */}
+                <div className="p-3 rounded-2xl bg-wildwoods-forest/95 border border-wildwoods-amber/40 flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isPlaying) onTogglePlay(currentTrack);
+                        setInAppFullPlayerMode(true);
+                      }}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition ${
+                        inAppFullPlayerMode
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'bg-wildwoods-slate hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/40'
+                      }`}
+                    >
+                      <Tv className="w-3.5 h-3.5 shrink-0" />
+                      Play Full-Length Songs (In-App)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setInAppFullPlayerMode(false)}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                        !inAppFullPlayerMode
+                          ? 'bg-wildwoods-amber text-wildwoods-slate shadow'
+                          : 'bg-wildwoods-slate hover:bg-wildwoods-moss text-wildwoods-mint'
+                      }`}
+                    >
+                      <Music className="w-3.5 h-3.5 shrink-0" />
+                      {durationSec > 45 ? 'Full Local Audio & Pace Slider' : '30s Sample & Pace Slider'}
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportModalInitialTab('streaming');
+                      setIsFullLengthExportOpen(true);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs inline-flex items-center gap-1.5 shadow-sm transition"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                    Spotify &amp; Phone QR Playlist
+                  </button>
+                </div>
+
+                {inAppFullPlayerMode && (() => {
+                  const continuousUrl = buildEmbeddedContinuousPlayerUrl(
+                    displayedTracks,
+                    currentTrack.id,
+                    resolvedYtMap,
+                    true
+                  );
+                  const fullPlaylistExternalUrl = buildInstantYoutubePlaylistUrl(
+                    displayedTracks,
+                    resolvedYtMap
+                  );
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-black/40 border-2 border-emerald-500/60 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <span className="font-extrabold text-emerald-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Continuous Full-Length Player Active ({displayedTracks.length} Full Songs Queued)
+                        </span>
+                        <a
+                          href={fullPlaylistExternalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-wildwoods-gold hover:underline font-bold inline-flex items-center gap-1"
+                        >
+                          Open Full Playlist in New Tab <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      {continuousUrl && (
+                        <div className="aspect-video w-full rounded-xl overflow-hidden border border-wildwoods-moss bg-black">
+                          <iframe
+                            title="Magic Jukebox Continuous Full-Length Player"
+                            src={continuousUrl}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-wildwoods-mint">
                   <span className="inline-flex items-center gap-1.5 font-semibold">
                     <Music className="w-3.5 h-3.5 text-wildwoods-gold" />
                     {durationSec > 45
                       ? 'Playing Full-Length Audio Track'
-                      : '30-Sec Song Preview (Tap Full Song links below for full track)'}
+                      : '30-Sec Song Sample (For Song Check & Tempo Matcher — click above for Full Songs)'}
                   </span>
                   <button
                     type="button"
@@ -1618,13 +1724,25 @@ export default function IsoJukeboxView({
               <button
                 type="button"
                 onClick={() => {
+                  if (isPlaying && currentTrack) onTogglePlay(currentTrack);
+                  setInAppFullPlayerMode(true);
+                }}
+                className="min-h-[42px] px-3.5 py-2 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-gold font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition"
+              >
+                <Tv className="w-3.5 h-3.5 text-wildwoods-amber" />
+                Play Full Songs
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setExportModalInitialTab('streaming');
                   setIsFullLengthExportOpen(true);
                 }}
                 className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Export to Spotify
+                <QrCode className="w-3.5 h-3.5" />
+                Spotify &amp; QR
               </button>
 
               <button
@@ -1657,6 +1775,10 @@ export default function IsoJukeboxView({
             patient={patient}
             trajectory={trajectory}
             initialTab={exportModalInitialTab}
+            onSwitchToInAppFullPlayer={() => {
+              if (isPlaying && currentTrack) onTogglePlay(currentTrack);
+              setInAppFullPlayerMode(true);
+            }}
             onOpenGiantButtonMode={() => {
               setGiantDomeMode(true);
               setPatientSafeView(true);

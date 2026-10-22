@@ -2,6 +2,8 @@ import { BiographicalTrack, MusicalMode, NeuroTargetBadge } from './iso-sequence
 
 export interface ItunesCandidateTrack {
   trackId: string;
+  appleTrackId?: string;
+  appleMusicUrl?: string;
   title: string;
   artist: string;
   album: string;
@@ -25,6 +27,7 @@ interface RawItunesItem {
   previewUrl?: string;
   artworkUrl100?: string;
   primaryGenreName?: string;
+  trackViewUrl?: string;
 }
 
 /**
@@ -133,10 +136,16 @@ export async function searchItunesTracks(
         const artworkUrl = item.artworkUrl100
           ? item.artworkUrl100.replace('100x100bb', '300x300bb')
           : '';
+        const appleMusicUrl = item.trackViewUrl
+          ? item.trackViewUrl.replace('itunes.apple.com', 'music.apple.com')
+          : undefined;
+        const appleTrackId = item.trackId ? String(item.trackId) : undefined;
         const acoustic = inferAcousticMetadata(item);
 
         return {
           trackId: `itunes-${item.trackId || Math.random().toString(36).slice(2, 9)}`,
+          appleTrackId,
+          appleMusicUrl,
           title: item.trackName!,
           artist: item.artistName!,
           album: item.collectionName || 'Original Recording',
@@ -153,14 +162,14 @@ export async function searchItunesTracks(
 }
 
 /**
- * Hydrates a list of BiographicalTracks with live iTunes previewUrl and high-res artworkUrl.
+ * Hydrates a list of BiographicalTracks with live iTunes previewUrl, high-res artworkUrl, and direct Apple Music URL.
  */
 export async function hydrateSeedTracksWithItunes(
   tracks: BiographicalTrack[]
 ): Promise<BiographicalTrack[]> {
   const hydrated = await Promise.all(
     tracks.map(async (track) => {
-      if (track.previewUrl && track.artworkUrl) {
+      if (track.previewUrl && track.artworkUrl && track.appleMusicUrl) {
         return track;
       }
       const matches = await searchItunesTracks(track.itunesQuery, 3);
@@ -169,6 +178,8 @@ export async function hydrateSeedTracksWithItunes(
           ...track,
           previewUrl: matches[0].previewUrl,
           artworkUrl: matches[0].artworkUrl,
+          appleMusicUrl: matches[0].appleMusicUrl || track.appleMusicUrl,
+          appleTrackId: matches[0].appleTrackId || track.appleTrackId,
         };
       }
       return track;

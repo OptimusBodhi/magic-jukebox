@@ -1,8 +1,17 @@
-import { IsoTrajectoryResult, PatientProfile } from './iso-sequencer';
+import { IsoTrajectoryResult, PatientProfile, SequencedTrack } from './iso-sequencer';
 
 const SPOTIFY_VERIFIER_KEY = 'magic_jukebox_spotify_pkce_verifier';
 const SPOTIFY_CLIENT_ID_KEY = 'magic_jukebox_spotify_client_id';
 const SPOTIFY_TOKEN_KEY = 'magic_jukebox_spotify_access_token';
+const SPOTIFY_REFRESH_TOKEN_KEY = 'magic_jukebox_spotify_refresh_token';
+
+export interface MintedSpotifyPlaylist {
+  playlistUrl: string;
+  embedUrl?: string;
+  matchedCount: number;
+  playlistName: string;
+  mode?: 'central' | 'user_pkce';
+}
 
 /**
  * Generates a cryptographic random code verifier and SHA-256 code challenge for Spotify OAuth 2.0 PKCE.
@@ -41,7 +50,12 @@ export function saveCustomSpotifyClientId(clientId: string): void {
 
 export function getSavedSpotifyAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(SPOTIFY_TOKEN_KEY);
+  return sessionStorage.getItem(SPOTIFY_TOKEN_KEY) || localStorage.getItem(SPOTIFY_TOKEN_KEY);
+}
+
+export function getSavedSpotifyRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(SPOTIFY_REFRESH_TOKEN_KEY);
 }
 
 /**
@@ -71,13 +85,17 @@ export async function startSpotifyPkceAuth(customClientId?: string): Promise<voi
 }
 
 /**
- * Exchanges a returned ?code=... query param from Spotify into an access token using PKCE.
+ * Exchanges a returned ?code=... query param from Spotify into an access token (and refresh token) using PKCE,
+ * or refreshes an expired access token automatically if a saved PKCE refresh token exists.
  */
 export async function exchangeSpotifyCodeIfPresent(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
-  if (!code) return getSavedSpotifyAccessToken();
+
+  if (!code) {
+    return getSavedSpotifyAccessToken();
+  }
 
   const verifier = localStorage.getItem(SPOTIFY_VERIFIER_KEY);
   const clientId = getConfiguredSpotifyClientId();
@@ -101,6 +119,10 @@ export async function exchangeSpotifyCodeIfPresent(): Promise<string | null> {
     const data = await res.json();
     if (data.access_token) {
       sessionStorage.setItem(SPOTIFY_TOKEN_KEY, data.access_token);
+      localStorage.setItem(SPOTIFY_TOKEN_KEY, data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem(SPOTIFY_REFRESH_TOKEN_KEY, data.refresh_token);
+      }
       // Clean ?code= from URL
       const cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete('code');
@@ -115,20 +137,132 @@ export async function exchangeSpotifyCodeIfPresent(): Promise<string | null> {
 }
 
 /**
- * Creates a real, full-length Spotify playlist in the user's Spotify account
+ * Refreshes a browser-stored PKCE refresh token if the access token expired.
+ */
+export async function refreshBrowserSpotifyTokenIfPossible(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const refreshToken = getSavedSpotifyRefreshToken();
+  const clientId = getConfiguredSpotifyClientId();
+  if (!refreshToken || !clientId) return null;
+
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.access_token) {
+      sessionStorage.setItem(SPOTIFY_TOKEN_KEY, data.access_token);
+      localStorage.setItem(SPOTIFY_TOKEN_KEY, data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem(SPOTIFY_REFRESH_TOKEN_KEY, data.refresh_token);
+      }
+      return data.access_token as string;
+    }
+  } catch {
+    // Ignore refresh error
+  }
+  return null;
+}
+
+/**
+ * Mints a zero-login, de-identified, unlisted (`public: false`) Spotify playlist
+ * on the Central Magic Jukebox Spotify account via `/.netlify/functions/spotify-central-playlist`.
+ */
+export async function createCentralSpotifyPlaylist(
+  patient: PatientProfile,
+  tracks: SequencedTrack[],
+  vibeLabel: string = 'Calm & Comforting Arc'
+): Promise<{
+  ok: boolean;
+  configured: boolean;
+  result?: MintedSpotifyPlaylist;
+  error?: string;
+}> {
+  if (typeof window === 'undefined') {
+    return { ok: false, configured: false };
+  }
+
+  try {
+    const res = await fetch('/.netlify/functions/spotify-central-playlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        birthYear: patient.birthYear,
+        vibeLabel,
+        // De-identified payload: only song titles & artists are sent, never patient PHI
+        tracks: tracks.map((t) => ({
+          title: t.title,
+          artist: t.artist,
+          year: t.year,
+        })),
+      }),
+    });
+
+    if (!res.ok) {
+      return { ok: false, configured: false };
+    }
+
+    const data = await res.json();
+    if (data?.ok && data.playlistUrl) {
+      return {
+        ok: true,
+        configured: true,
+        result: {
+          playlistUrl: data.playlistUrl,
+          embedUrl: data.embedUrl,
+          matchedCount: data.matchedCount || tracks.length,
+          playlistName: data.playlistName,
+          mode: 'central',
+        },
+      };
+    }
+
+    return {
+      ok: false,
+      configured: Boolean(data?.configured),
+      error: data?.error || data?.reason,
+    };
+  } catch {
+    return { ok: false, configured: false };
+  }
+}
+
+/**
+ * Creates a real, full-length Spotify playlist in the connected Spotify account
  * sequenced in exact Iso-Principle order (Phase 1 -> Phase 2 -> Phase 3).
+ * Uses de-identified, unlisted (`public: false`) safe-harbor naming.
  */
 export async function createFullLengthSpotifyPlaylist(
   accessToken: string,
   patient: PatientProfile,
   trajectory: IsoTrajectoryResult
-): Promise<{ playlistUrl: string; matchedCount: number; playlistName: string }> {
+): Promise<MintedSpotifyPlaylist> {
   // 1. Fetch current Spotify user profile
-  const meRes = await fetch('https://api.spotify.com/v1/me', {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  let activeToken = accessToken;
+  let meRes = await fetch('https://api.spotify.com/v1/me', {
+    headers: { Authorization: `Bearer ${activeToken}` },
   });
+
+  if (!meRes.ok) {
+    const refreshed = await refreshBrowserSpotifyTokenIfPossible();
+    if (refreshed) {
+      activeToken = refreshed;
+      meRes = await fetch('https://api.spotify.com/v1/me', {
+        headers: { Authorization: `Bearer ${activeToken}` },
+      });
+    }
+  }
+
   if (!meRes.ok) {
     sessionStorage.removeItem(SPOTIFY_TOKEN_KEY);
+    localStorage.removeItem(SPOTIFY_TOKEN_KEY);
     throw new Error('Spotify session expired. Please reconnect.');
   }
   const me = await meRes.json();
@@ -139,7 +273,7 @@ export async function createFullLengthSpotifyPlaylist(
     const q = encodeURIComponent(`track:${track.title} artist:${track.artist}`);
     const searchRes = await fetch(
       `https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${activeToken}` } }
     );
     if (searchRes.ok) {
       const searchData = await searchRes.json();
@@ -154,7 +288,7 @@ export async function createFullLengthSpotifyPlaylist(
       `https://api.spotify.com/v1/search?q=${encodeURIComponent(
         `${track.title} ${track.artist}`
       )}&type=track&limit=1`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${activeToken}` } }
     );
     if (broadRes.ok) {
       const broadData = await broadRes.json();
@@ -163,20 +297,18 @@ export async function createFullLengthSpotifyPlaylist(
     }
   }
 
-  // 3. Create the playlist in the user's Spotify account
-  const playlistName = `${patient.preferredName}’s Magic Jukebox (${trajectory.currentState.label} → ${trajectory.targetState.label})`;
-  const description = `Generated by The Magic Jukebox • Ages 10-30 Reminiscence Bump (${
-    patient.birthYear + 10
-  }-${patient.birthYear + 30}) • Sequenced from ${trajectory.currentState.label} to ${
-    trajectory.targetState.label
-  }.`;
+  // 3. Create an unlisted (public: false), de-identified playlist
+  const bumpStart = patient.birthYear + 10;
+  const bumpEnd = patient.birthYear + 30;
+  const playlistName = `Magic Jukebox • ${bumpStart}–${bumpEnd} Era (${trajectory.targetState.label})`;
+  const description = `Sequenced by The Magic Jukebox (Studio Wildwoods) • ${bumpStart}-${bumpEnd} Reminiscence Era. Personal, non-commercial listening via your Spotify account.`;
 
   const createRes = await fetch(
     `https://api.spotify.com/v1/users/${encodeURIComponent(me.id)}/playlists`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${activeToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -200,7 +332,7 @@ export async function createFullLengthSpotifyPlaylist(
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${activeToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ uris }),
@@ -212,7 +344,9 @@ export async function createFullLengthSpotifyPlaylist(
     playlistUrl:
       createdPlaylist?.external_urls?.spotify ||
       `https://open.spotify.com/playlist/${createdPlaylist.id}`,
+    embedUrl: `https://open.spotify.com/embed/playlist/${createdPlaylist.id}?utm_source=generator`,
     matchedCount: uris.length,
     playlistName,
+    mode: 'user_pkce',
   };
 }

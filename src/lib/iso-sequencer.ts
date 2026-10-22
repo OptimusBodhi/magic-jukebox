@@ -22,6 +22,9 @@ export interface BiographicalTrack {
   itunesQuery: string;
   previewUrl?: string;
   artworkUrl?: string;
+  appleMusicUrl?: string;
+  appleTrackId?: string;
+  youtubeVideoId?: string;
   epochLabel?: string;
 }
 
