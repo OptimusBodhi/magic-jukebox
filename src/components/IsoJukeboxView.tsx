@@ -225,6 +225,8 @@ export default function IsoJukeboxView({
   onUpdatePatientProfile,
 }: IsoJukeboxViewProps) {
   const [patientSafeView, setPatientSafeView] = useState(false);
+  const [giantDomeMode, setGiantDomeMode] = useState(false);
+  const [dailyAutoPlayEnabled, setDailyAutoPlayEnabled] = useState(false);
   const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
   const [showPaceMatcher, setShowPaceMatcher] = useState(false);
   const [playlistFilterMode, setPlaylistFilterMode] = useState<'all' | 'relaxing' | 'upbeat' | 'arc'>('all');
@@ -427,89 +429,201 @@ export default function IsoJukeboxView({
   const minBpm = 55;
   const maxBpm = 135;
 
-  // Oversized Patient-Safe Lock View
+  // Compute the proactive afternoon auto-play time (30 mins before sundowningPeakTime)
+  const autoPlayTargetTime = React.useMemo(() => {
+    const raw = patient.sundowningPeakTime || '16:30';
+    const [hh, mm] = raw.split(':').map((n) => Number(n));
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return '16:00';
+    const totalMins = (hh * 60 + mm - 30 + 1440) % 1440;
+    const outH = String(Math.floor(totalMins / 60)).padStart(2, '0');
+    const outM = String(totalMins % 60).padStart(2, '0');
+    return `${outH}:${outM}`;
+  }, [patient.sundowningPeakTime]);
+
+  // Hands-Free Daily Auto-Play Clock when enabled in Bedside View
+  React.useEffect(() => {
+    if (!dailyAutoPlayEnabled || isPlaying || !currentTrack) return;
+    const checkClock = () => {
+      const nowHhMm = new Date().toTimeString().slice(0, 5);
+      if (nowHhMm === autoPlayTargetTime) {
+        onTogglePlay(currentTrack);
+      }
+    };
+    const timer = setInterval(checkClock, 20000);
+    return () => clearInterval(timer);
+  }, [dailyAutoPlayEnabled, isPlaying, currentTrack, autoPlayTargetTime, onTogglePlay]);
+
+  // Oversized Patient-Safe Lock View (+ Optional Giant 1-Button Dome Mode & Auto-Play Clock)
   if (patientSafeView && currentTrack) {
     return (
-      <div className="bg-wildwoods-slate text-wildwoods-cream rounded-3xl p-8 md:p-12 shadow-2xl border-2 border-wildwoods-sage/40 transition-all">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-wildwoods-moss">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-wildwoods-moss text-wildwoods-mint text-sm font-semibold">
+      <div className="bg-wildwoods-slate text-wildwoods-cream rounded-3xl p-6 sm:p-10 md:p-12 shadow-2xl border-2 border-wildwoods-sage/40 transition-all space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-wildwoods-moss">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-wildwoods-moss text-wildwoods-mint text-xs sm:text-sm font-semibold">
               <Lock className="w-4 h-4" />
-              Simple Full-Screen Player for {patient.preferredName}
+              Bedside Screen for {patient.preferredName}
             </span>
+
+            <button
+              type="button"
+              onClick={() => setGiantDomeMode((prev) => !prev)}
+              className={`px-3.5 py-2 rounded-full text-xs sm:text-sm font-extrabold border transition flex items-center gap-1.5 ${
+                giantDomeMode
+                  ? 'bg-wildwoods-amber text-wildwoods-slate border-wildwoods-amber shadow'
+                  : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border-wildwoods-amber/40'
+              }`}
+            >
+              🔘 {giantDomeMode ? 'Giant 1-Button Mode: ON' : 'Switch to Giant 1-Button Mode'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDailyAutoPlayEnabled((prev) => !prev)}
+              className={`px-3.5 py-2 rounded-full text-xs sm:text-sm font-bold border transition flex items-center gap-1.5 ${
+                dailyAutoPlayEnabled
+                  ? 'bg-emerald-700 text-white border-emerald-400 shadow'
+                  : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-mint border-wildwoods-moss'
+              }`}
+              title="Automatically start playing 30 minutes before afternoon restlessness"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              {dailyAutoPlayEnabled
+                ? `Auto-Play Daily at ${autoPlayTargetTime}: ON`
+                : `Auto-Play at ${autoPlayTargetTime}: OFF`}
+            </button>
           </div>
+
           <button
+            type="button"
             onClick={() => setPatientSafeView(false)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-wildwoods-moss hover:bg-wildwoods-sage text-wildwoods-cream font-semibold text-sm transition"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-wildwoods-moss hover:bg-wildwoods-sage text-wildwoods-cream font-semibold text-xs sm:text-sm transition"
           >
             <Unlock className="w-4 h-4" />
             Exit Full-Screen View
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-8">
-          <div className="lg:col-span-5 flex flex-col items-center">
-            <div
-              className={`relative w-64 h-64 md:w-80 md:h-80 rounded-full border-8 border-wildwoods-amber/70 shadow-2xl overflow-hidden bg-wildwoods-forest flex items-center justify-center ${
-                isPlaying ? 'animate-spin' : ''
+        {giantDomeMode ? (
+          <div className="py-4 space-y-6 text-center">
+            <button
+              type="button"
+              onClick={() => onTogglePlay(currentTrack)}
+              className={`w-full min-h-[340px] sm:min-h-[400px] rounded-3xl border-8 p-8 flex flex-col items-center justify-center gap-6 shadow-2xl transition active:scale-[0.99] ${
+                isPlaying
+                  ? 'bg-emerald-900/90 hover:bg-emerald-800 border-emerald-400 text-white'
+                  : 'bg-wildwoods-amber hover:bg-wildwoods-gold border-white/60 text-wildwoods-slate'
               }`}
-              style={{ animationDuration: '14s' }}
             >
-              {currentTrack.artworkUrl ? (
-                <img
-                  src={currentTrack.artworkUrl}
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover opacity-90"
-                />
-              ) : (
-                <Music className="w-24 h-24 text-wildwoods-amber" />
-              )}
-              <div className="absolute w-16 h-16 rounded-full bg-wildwoods-slate border-4 border-wildwoods-amber" />
-            </div>
-          </div>
+              <div
+                className={`w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center shadow-2xl ${
+                  isPlaying
+                    ? 'bg-white text-emerald-950 animate-pulse'
+                    : 'bg-wildwoods-slate text-wildwoods-amber'
+                }`}
+              >
+                {isPlaying ? (
+                  <Pause className="w-16 h-16 sm:w-20 sm:h-20" />
+                ) : (
+                  <Play className="w-16 h-16 sm:w-20 sm:h-20 fill-current ml-1" />
+                )}
+              </div>
 
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            <div className="inline-block px-4 py-1.5 rounded-full bg-wildwoods-amber/20 border border-wildwoods-amber text-wildwoods-gold font-semibold text-base">
-              {currentTrack.year} Favorite
-            </div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-wildwoods-cream">
-              {currentTrack.title}
-            </h2>
-            <p className="text-2xl text-wildwoods-mint font-medium">{currentTrack.artist}</p>
-
-            <div className="bg-wildwoods-forest/90 p-6 rounded-2xl border border-wildwoods-sage/40 space-y-2">
-              <p className="text-xs uppercase tracking-wider text-wildwoods-gold font-bold">
-                Sing-Along Chorus
-              </p>
-              {currentTrack.chorusLyrics.map((line, i) => (
-                <p
-                  key={i}
-                  className="text-2xl md:text-3xl font-serif text-wildwoods-cream leading-relaxed"
+              <div className="space-y-2">
+                <div className="text-3xl sm:text-5xl font-serif font-extrabold tracking-tight">
+                  {isPlaying
+                    ? 'TAP ANYWHERE TO PAUSE MUSIC'
+                    : `TAP ANYWHERE TO PLAY ${patient.preferredName.toUpperCase()}’S MUSIC`}
+                </div>
+                <div
+                  className={`text-lg sm:text-2xl font-bold ${
+                    isPlaying ? 'text-emerald-200' : 'text-wildwoods-slate/85'
+                  }`}
                 >
-                  “{line}”
-                </p>
-              ))}
-            </div>
+                  Now Loaded: “{currentTrack.title}” — {currentTrack.artist} ({currentTrack.year})
+                </div>
+              </div>
+            </button>
 
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-5 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-wildwoods-mint px-2">
+              <span>
+                ✓ Bluetooth Media Buttons &amp; USB Switches Active (Press <strong>Space</strong> to
+                Play/Pause, <strong>→</strong> for Next Song)
+              </span>
               <button
-                onClick={() => onTogglePlay(currentTrack)}
-                className="min-h-[72px] px-10 py-5 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-bold text-2xl flex items-center gap-4 shadow-xl transition"
-              >
-                {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-                {isPlaying ? 'Pause Music' : 'Play Music'}
-              </button>
-
-              <button
+                type="button"
                 onClick={onNextTrack}
-                className="min-h-[72px] px-8 py-5 rounded-2xl bg-wildwoods-moss hover:bg-wildwoods-sage text-wildwoods-cream font-bold text-xl flex items-center gap-3 transition"
+                className="px-5 py-2.5 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream font-bold flex items-center gap-2 border border-wildwoods-moss"
               >
-                <SkipForward className="w-7 h-7" />
-                Next Song
+                <SkipForward className="w-4 h-4" />
+                Skip to Next Song
               </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-6">
+            <div className="lg:col-span-5 flex flex-col items-center">
+              <div
+                className={`relative w-64 h-64 md:w-80 md:h-80 rounded-full border-8 border-wildwoods-amber/70 shadow-2xl overflow-hidden bg-wildwoods-forest flex items-center justify-center ${
+                  isPlaying ? 'animate-spin' : ''
+                }`}
+                style={{ animationDuration: '14s' }}
+              >
+                {currentTrack.artworkUrl ? (
+                  <img
+                    src={currentTrack.artworkUrl}
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover opacity-90"
+                  />
+                ) : (
+                  <Music className="w-24 h-24 text-wildwoods-amber" />
+                )}
+                <div className="absolute w-16 h-16 rounded-full bg-wildwoods-slate border-4 border-wildwoods-amber" />
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="inline-block px-4 py-1.5 rounded-full bg-wildwoods-amber/20 border border-wildwoods-amber text-wildwoods-gold font-semibold text-base">
+                {currentTrack.year} Favorite
+              </div>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-wildwoods-cream">
+                {currentTrack.title}
+              </h2>
+              <p className="text-2xl text-wildwoods-mint font-medium">{currentTrack.artist}</p>
+
+              <div className="bg-wildwoods-forest/90 p-6 rounded-2xl border border-wildwoods-sage/40 space-y-2">
+                <p className="text-xs uppercase tracking-wider text-wildwoods-gold font-bold">
+                  Sing-Along Chorus
+                </p>
+                {currentTrack.chorusLyrics.map((line, i) => (
+                  <p
+                    key={i}
+                    className="text-2xl md:text-3xl font-serif text-wildwoods-cream leading-relaxed"
+                  >
+                    “{line}”
+                  </p>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-5 pt-4">
+                <button
+                  onClick={() => onTogglePlay(currentTrack)}
+                  className="min-h-[72px] px-10 py-5 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-bold text-2xl flex items-center gap-4 shadow-xl transition"
+                >
+                  {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                  {isPlaying ? 'Pause Music' : 'Play Music'}
+                </button>
+
+                <button
+                  onClick={onNextTrack}
+                  className="min-h-[72px] px-8 py-5 rounded-2xl bg-wildwoods-moss hover:bg-wildwoods-sage text-wildwoods-cream font-bold text-xl flex items-center gap-3 transition"
+                >
+                  <SkipForward className="w-7 h-7" />
+                  Next Song
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1458,6 +1572,10 @@ export default function IsoJukeboxView({
             onClose={() => setIsFullLengthExportOpen(false)}
             patient={patient}
             trajectory={trajectory}
+            onOpenGiantButtonMode={() => {
+              setGiantDomeMode(true);
+              setPatientSafeView(true);
+            }}
             onAttachFullAudioFile={(trackId, fileUrl, fileName) => {
               if (onUpdateTrackInLibrary) {
                 onUpdateTrackInLibrary(trackId, { previewUrl: fileUrl });

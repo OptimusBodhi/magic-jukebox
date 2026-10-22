@@ -13,6 +13,9 @@ import {
   Sparkles,
   Play,
   Settings,
+  Radio,
+  Printer,
+  QrCode,
 } from 'lucide-react';
 import {
   BiographicalTrack,
@@ -21,8 +24,11 @@ import {
   SequencedTrack,
 } from '@/lib/iso-sequencer';
 import {
+  buildBedsideCardUrl,
+  encodeShareableJukeboxUrl,
   formatCsvPlaylist,
   formatM3uPlaylist,
+  formatPhysicalPlayerUsbGuide,
   formatSpotifyImportTracklist,
   getFullSongStreamingLinks,
 } from '@/lib/share-and-export';
@@ -39,6 +45,7 @@ interface FullLengthExportModalProps {
   patient: PatientProfile;
   trajectory: IsoTrajectoryResult;
   onAttachFullAudioFile?: (trackId: string, fileUrl: string, fileName: string) => void;
+  onOpenGiantButtonMode?: () => void;
 }
 
 export default function FullLengthExportModal({
@@ -47,8 +54,12 @@ export default function FullLengthExportModal({
   patient,
   trajectory,
   onAttachFullAudioFile,
+  onOpenGiantButtonMode,
 }: FullLengthExportModalProps) {
+  const [modalTab, setModalTab] = useState<'streaming' | 'hardware'>('streaming');
   const [copiedTracklist, setCopiedTracklist] = useState(false);
+  const [copiedUsbGuide, setCopiedUsbGuide] = useState(false);
+  const [copiedNfcVibe, setCopiedNfcVibe] = useState<string | null>(null);
   const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
   const [showSpotifyClientConfig, setShowSpotifyClientConfig] = useState(false);
   const [customClientId, setCustomClientId] = useState('');
@@ -98,6 +109,50 @@ export default function FullLengthExportModal({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyPhysicalUsbGuide = async () => {
+    const guideText = formatPhysicalPlayerUsbGuide(patient, trajectory);
+    try {
+      await navigator.clipboard.writeText(guideText);
+      setCopiedUsbGuide(true);
+      setTimeout(() => setCopiedUsbGuide(false), 4000);
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleDownloadPhysicalUsbGuide = () => {
+    const guideText = formatPhysicalPlayerUsbGuide(patient, trajectory);
+    const blob = new Blob([guideText], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${patient.preferredName.toLowerCase().replace(/\s+/g, '-')}-3-button-player-usb-guide.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyNfcLink = async (vibe: 'upbeat' | 'arc' | 'relaxing') => {
+    if (typeof window === 'undefined') return;
+    const baseShare = encodeShareableJukeboxUrl(
+      window.location.origin + window.location.pathname,
+      patient,
+      orderedTracks,
+      [],
+      trajectory.currentState.id,
+      trajectory.targetState.id
+    );
+    const nfcUrl = buildBedsideCardUrl(baseShare, vibe);
+    try {
+      await navigator.clipboard.writeText(nfcUrl);
+      setCopiedNfcVibe(vibe);
+      setTimeout(() => setCopiedNfcVibe(null), 4000);
+    } catch {
+      // Ignore
+    }
   };
 
   const handleDirectSpotifyExport = async () => {
@@ -184,22 +239,228 @@ export default function FullLengthExportModal({
           </button>
         </div>
 
-        {/* Active Mood Sequence Banner */}
-        <div className="bg-wildwoods-parchment px-6 py-3.5 border-b border-wildwoods-sand flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
-          <div className="font-bold text-wildwoods-slate flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-wildwoods-amber" />
-            <span>
-              Ordered for: <strong>{trajectory.currentState.label}</strong> →{' '}
-              <strong>{trajectory.targetState.label}</strong>
+        {/* Active Mood Sequence Banner + Clean 2-Tab Switcher */}
+        <div className="bg-wildwoods-parchment px-4 sm:px-6 py-3 border-b border-wildwoods-sand space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
+            <div className="font-bold text-wildwoods-slate flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-wildwoods-amber" />
+              <span>
+                Ordered for: <strong>{trajectory.currentState.label}</strong> →{' '}
+                <strong>{trajectory.targetState.label}</strong>
+              </span>
+            </div>
+            <span className="font-extrabold text-wildwoods-sage">
+              {orderedTracks.length} Songs ({patient.birthYear + 10}–{patient.birthYear + 30} Era)
             </span>
           </div>
-          <span className="font-extrabold text-wildwoods-sage">
-            {orderedTracks.length} Songs ({patient.birthYear + 10}–{patient.birthYear + 30} Era)
-          </span>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setModalTab('streaming')}
+              className={`min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border-2 transition ${
+                modalTab === 'streaming'
+                  ? 'bg-wildwoods-slate text-wildwoods-gold border-wildwoods-slate shadow-sm'
+                  : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-wildwoods-sand'
+              }`}
+            >
+              <Disc3 className="w-4 h-4 shrink-0" />
+              1. Spotify, Apple &amp; Full Songs
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModalTab('hardware')}
+              className={`min-h-[42px] px-3.5 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border-2 transition ${
+                modalTab === 'hardware'
+                  ? 'bg-wildwoods-slate text-wildwoods-gold border-wildwoods-slate shadow-sm'
+                  : 'bg-white hover:bg-wildwoods-cream text-wildwoods-slate border-wildwoods-sand'
+              }`}
+            >
+              <Radio className="w-4 h-4 shrink-0" />
+              2. Physical &ldquo;Easy Button&rdquo; &amp; Bedside Setup
+            </button>
+          </div>
         </div>
 
         {/* Body */}
         <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {modalTab === 'hardware' ? (
+            <div className="space-y-5">
+              {/* HARDWARE OPTION 1: GIANT 1-BUTTON SCREEN & BLUETOOTH / USB BUTTONS */}
+              <section className="bg-white rounded-2xl p-5 border-2 border-wildwoods-amber shadow-sm space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 text-[11px] font-extrabold uppercase tracking-wider">
+                    Zero New Hardware Needed • Works Right Now
+                  </span>
+                  <span className="text-xs font-bold text-emerald-800">
+                    ✓ Bluetooth &amp; USB Switches Auto-Enabled
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-serif font-bold text-wildwoods-slate">
+                  Giant 1-Button Bedside Screen &amp; Physical Push-Buttons
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  For a loved one who cannot use menus or small buttons, open our{' '}
+                  <strong>Giant 1-Button Bedside Screen</strong> (tapping anywhere on the screen starts
+                  or pauses the music). You can also pair any <strong>$15 Bluetooth media button</strong>{' '}
+                  or <strong>USB dome switch</strong>—pressing it automatically plays/pauses the music!
+                </p>
+
+                {onOpenGiantButtonMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenGiantButtonMode();
+                    }}
+                    className="w-full sm:w-auto min-h-[48px] px-5 py-2.5 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    Open Giant 1-Button Bedside Screen (+ Daily Auto-Play Clock)
+                  </button>
+                )}
+              </section>
+
+              {/* HARDWARE OPTION 2: RELISH / SMPL 3-BUTTON PHYSICAL PLAYER USB EXPORT */}
+              <section className="bg-white rounded-2xl p-5 border-2 border-wildwoods-sand shadow-sm space-y-3">
+                <div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-950 text-[11px] font-extrabold uppercase tracking-wider">
+                    For Relish Radio &amp; SMPL Lift-Lid Players
+                  </span>
+                  <h3 className="text-lg font-serif font-bold text-wildwoods-slate mt-1">
+                    Load onto a Dedicated 3-Button Dementia Music Player (USB)
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    Have a physical <strong>Relish Radio</strong> or <strong>SMPL Player</strong>?
+                    Download {patient.preferredName}’s 3-Button USB folder list (organized into{' '}
+                    <strong>Button 1: Cheerful</strong>, <strong>Button 2: Afternoon Calm</strong>, and{' '}
+                    <strong>Button 3: Peaceful Rest</strong>) with a cut-out paper label for the top of
+                    the radio.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleDownloadPhysicalUsbGuide}
+                    className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-gold font-extrabold text-xs flex items-center gap-2 shadow-sm transition"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download 3-Button USB Guide &amp; Paper Label (.TXT)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyPhysicalUsbGuide}
+                    className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-cream hover:bg-wildwoods-parchment text-wildwoods-slate border border-wildwoods-sand font-bold text-xs flex items-center gap-1.5 transition"
+                  >
+                    {copiedUsbGuide ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                        Copied 3-Button Guide!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy 3-Button List
+                      </>
+                    )}
+                  </button>
+                </div>
+              </section>
+
+              {/* HARDWARE OPTION 3: NFC PHOTO CARDS & PRINTABLE BEDSIDE QR COASTERS */}
+              <section className="bg-white rounded-2xl p-5 border-2 border-wildwoods-sand shadow-sm space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 text-[11px] font-extrabold uppercase tracking-wider">
+                      Tap-a-Photo NFC Stickers &amp; Printable Bedside Cards
+                    </span>
+                    <h3 className="text-lg font-serif font-bold text-wildwoods-slate mt-1">
+                      1-Tap NFC Photo Links &amp; Printable Bedside Coasters
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-wildwoods-parchment hover:bg-wildwoods-sand text-wildwoods-slate border border-wildwoods-sand font-extrabold text-xs flex items-center gap-1.5"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Print Cards
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Program a $0.40 NFC sticker on the back of a family photo—or print these 3 bedside
+                  cards—so any visiting family member or caregiver can tap to start the right playlist
+                  automatically:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {(
+                    [
+                      {
+                        vibe: 'upbeat',
+                        emoji: '☀️',
+                        title: 'Button 1: Cheerful',
+                        desc: 'Upbeat sing-alongs',
+                      },
+                      {
+                        vibe: 'arc',
+                        emoji: '🌊',
+                        title: 'Button 2: Calm Arc',
+                        desc: '30-min mood-to-calm',
+                      },
+                      {
+                        vibe: 'relaxing',
+                        emoji: '🌙',
+                        title: 'Button 3: Peaceful',
+                        desc: 'Soothing rest songs',
+                      },
+                    ] as const
+                  ).map((card) => {
+                    const isCopied = copiedNfcVibe === card.vibe;
+                    return (
+                      <div
+                        key={card.vibe}
+                        className="p-3.5 rounded-2xl bg-wildwoods-cream border-2 border-wildwoods-sand flex flex-col justify-between gap-3"
+                      >
+                        <div>
+                          <div className="text-xl">{card.emoji}</div>
+                          <div className="font-extrabold text-xs sm:text-sm text-wildwoods-slate mt-1">
+                            {card.title}
+                          </div>
+                          <div className="text-[11px] text-slate-600">{card.desc}</div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyNfcLink(card.vibe)}
+                          className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-wildwoods-sand text-wildwoods-slate font-extrabold text-[11px] flex items-center justify-center gap-1 transition"
+                        >
+                          {isCopied ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                              Copied NFC Link!
+                            </>
+                          ) : (
+                            <>
+                              <QrCode className="w-3.5 h-3.5 text-wildwoods-amber" />
+                              Copy Auto-Play Link
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          ) : (
+            <>
           {/* OPTION 1: EXPORT TO SPOTIFY / APPLE MUSIC */}
           <section className="bg-white rounded-2xl p-5 border-2 border-emerald-600/40 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -443,6 +704,8 @@ export default function FullLengthExportModal({
               })}
             </div>
           </section>
+            </>
+          )}
         </div>
       </div>
     </div>

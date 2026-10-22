@@ -106,6 +106,14 @@ test('Public Beta feedback system & bedside wake-lock reliability exist and are 
   const pageSrc = fs.readFileSync(path.resolve('src/app/page.tsx'), 'utf8');
   assert.match(pageSrc, /BetaFeedbackModal/);
   assert.match(pageSrc, /wakeLock/);
+  assert.match(pageSrc, /mediaSession/);
+
+  const shareLib = fs.readFileSync(path.resolve('src/lib/share-and-export.ts'), 'utf8');
+  assert.match(shareLib, /formatPhysicalPlayerUsbGuide/);
+  assert.match(shareLib, /buildBedsideCardUrl/);
+
+  const jukeboxSrc = fs.readFileSync(path.resolve('src/components/IsoJukeboxView.tsx'), 'utf8');
+  assert.match(jukeboxSrc, /Giant 1-Button Mode/);
 });
 
 

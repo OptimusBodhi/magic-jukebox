@@ -148,13 +148,23 @@ export default function MagicJukeboxApp() {
     try {
       const params = new URLSearchParams(window.location.search);
       const sharedParam = params.get('share');
+      const requestedVibe = params.get('vibe');
+      const shouldAutoplay = params.get('autoplay') === '1';
       if (sharedParam) {
         const decoded = decodeShareableJukeboxParam(sharedParam);
         if (decoded) {
           setPatient(decoded.patient);
           setIsCustomProfile(true);
-          setCurrentStateId(decoded.currentStateId);
-          setTargetStateId(decoded.targetStateId);
+          if (requestedVibe === 'upbeat') {
+            setCurrentStateId('withdrawn_sad');
+            setTargetStateId('sing_along_joy');
+          } else if (requestedVibe === 'relaxing') {
+            setCurrentStateId('anxious_restless');
+            setTargetStateId('deep_calm');
+          } else {
+            setCurrentStateId(decoded.currentStateId);
+            setTargetStateId(decoded.targetStateId);
+          }
           if (decoded.tracks.length > 0) {
             initialTracks = decoded.tracks;
             setLibrary(decoded.tracks);
@@ -170,6 +180,18 @@ export default function MagicJukeboxApp() {
           );
           hydrateSeedTracksWithItunes(initialTracks).then((hydrated) => {
             setLibrary(hydrated);
+            if (shouldAutoplay && hydrated[0]?.previewUrl && audioRef.current) {
+              audioRef.current.src = hydrated[0].previewUrl;
+              audioRef.current
+                .play()
+                .then(() => {
+                  setIsPlaying(true);
+                  setIsGerdnerTimerRunning(true);
+                })
+                .catch(() => {
+                  // Browser requires a single tap if launched without gesture
+                });
+            }
           });
           return;
         }
@@ -469,6 +491,65 @@ export default function MagicJukeboxApp() {
       setTimeout(() => handleTogglePlay(prevTrack), 50);
     }
   };
+
+  // Physical "Easy Button" & Bluetooth Media Button Bridge (MediaSession API + USB Switch / Spacebar)
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator && activeTrack) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: activeTrack.title,
+          artist: activeTrack.artist,
+          album: `${patient.preferredName}’s Magic Jukebox (${activeTrack.year})`,
+          artwork: activeTrack.artworkUrl
+            ? [{ src: activeTrack.artworkUrl, sizes: '100x100', type: 'image/jpeg' }]
+            : [],
+        });
+        navigator.mediaSession.setActionHandler('play', () => {
+          if (!isPlaying) handleTogglePlay(activeTrack);
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          if (isPlaying) handleTogglePlay(activeTrack);
+        });
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          handleNextTrack();
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          handlePrevTrack();
+        });
+      } catch {
+        // Ignore if browser restricts MediaSession handlers
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (activeTab !== 'jukebox') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) {
+        return;
+      }
+      if (e.code === 'Space' && !e.repeat) {
+        // Only intercept Space if not focused on an interactive button that already handles Space
+        if (tag !== 'button' && tag !== 'a') {
+          e.preventDefault();
+          if (activeTrack) handleTogglePlay(activeTrack);
+        }
+      } else if (e.code === 'MediaPlayPause') {
+        e.preventDefault();
+        if (activeTrack) handleTogglePlay(activeTrack);
+      } else if (e.code === 'MediaTrackNext') {
+        e.preventDefault();
+        handleNextTrack();
+      } else if (e.code === 'MediaTrackPrevious') {
+        e.preventDefault();
+        handlePrevTrack();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 
   const handleSeek = (sec: number) => {
     setProgressSec(sec);

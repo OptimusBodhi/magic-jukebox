@@ -267,3 +267,78 @@ export function formatCsvPlaylist(trajectory: IsoTrajectoryResult): string {
   return rows.join('\n');
 }
 
+/**
+ * Builds a self-contained NFC tag / QR code URL that opens the person's Jukebox
+ * directly into a chosen vibe mode ('all' | 'relaxing' | 'upbeat' | 'arc') with autoplay=1.
+ */
+export function buildBedsideCardUrl(
+  shareUrl: string,
+  vibe: 'all' | 'relaxing' | 'upbeat' | 'arc'
+): string {
+  try {
+    const url = new URL(shareUrl);
+    url.searchParams.set('autoplay', '1');
+    url.searchParams.set('vibe', vibe);
+    return url.toString();
+  } catch {
+    return shareUrl;
+  }
+}
+
+/**
+ * Formats a step-by-step 3-Button USB Flash Drive folder guide + cut-out paper label
+ * for off-the-shelf dementia music players (Relish Radio, SMPL Lift-Lid Player, etc.).
+ */
+export function formatPhysicalPlayerUsbGuide(
+  patient: PatientProfile,
+  trajectory: IsoTrajectoryResult
+): string {
+  const all = trajectory.orderedTracks;
+  const upbeat = all.filter((t) => t.bpm >= 90 || t.energy >= 6 || t.phase === 1);
+  const calm = all.filter((t) => t.bpm <= 86 || t.energy <= 4 || t.phase === 3);
+
+  const formatList = (tracks: typeof all) =>
+    tracks
+      .map(
+        (tr, idx) =>
+          `   ${String(idx + 1).padStart(2, '0')} - ${tr.title} — ${tr.artist} (${tr.year})`
+      )
+      .join('\n');
+
+  return [
+    `====================================================================`,
+    `PHYSICAL "EASY BUTTON" USB SETUP GUIDE (RELISH / SMPL PLAYERS)`,
+    `For: ${patient.name} (Favorite Youth Era: ${patient.birthYear + 10}–${patient.birthYear + 30})`,
+    `====================================================================`,
+    ``,
+    `HOW TO LOAD ONTO A RELISH RADIO OR SMPL ONE-BUTTON PLAYER:`,
+    `1. Plug the player's USB flash drive into your computer.`,
+    `2. Create 3 folders on the USB drive corresponding to the 3 top buttons`,
+    `   (or put Folder 2 on a single-button lift-lid player):`,
+    ``,
+    `--------------------------------------------------------------------`,
+    `FOLDER / BUTTON 1: "01_Cheerful_Sing_Alongs" (Upbeat & Happy)`,
+    `--------------------------------------------------------------------`,
+    formatList(upbeat.length > 0 ? upbeat : all.slice(0, 4)),
+    ``,
+    `--------------------------------------------------------------------`,
+    `FOLDER / BUTTON 2: "02_Afternoon_Calm_Arc" (Gradual Mood-to-Calm Order)`,
+    `--------------------------------------------------------------------`,
+    formatList(all),
+    ``,
+    `--------------------------------------------------------------------`,
+    `FOLDER / BUTTON 3: "03_Peaceful_Rest" (Slow, Soothing Comfort Songs)`,
+    `--------------------------------------------------------------------`,
+    formatList(calm.length > 0 ? calm : [...all].reverse().slice(0, 4)),
+    ``,
+    `====================================================================`,
+    `✂️ CUT-OUT PAPER LABEL FOR TOP OF PHYSICAL PLAYER:`,
+    `+------------------------------------------------------------------+`,
+    `|  ${patient.preferredName.toUpperCase()}’S MAGIC JUKEBOX (${patient.birthYear + 10}–${patient.birthYear + 30} FAVORITES)             |`,
+    `|  [ BUTTON 1: Cheerful ]  [ BUTTON 2: Calm Arc ]  [ BUTTON 3: Rest ] |`,
+    `+------------------------------------------------------------------+`,
+    `====================================================================`,
+  ].join('\n');
+}
+
+
