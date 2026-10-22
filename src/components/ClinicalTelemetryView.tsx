@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import {
   BARS_SCALE_DEFINITIONS,
+  OBSERVED_BEHAVIORAL_SIGNS,
+  ObservedBehavioralSignId,
   BarsSessionLog,
   BiographicalTrack,
   IsoTrajectoryResult,
@@ -59,6 +61,12 @@ export default function ClinicalTelemetryView({
     'Late-Afternoon Sundowning Pacing (4:00 PM Proactive Shield)'
   );
   const [prnAvoided, setPrnAvoided] = useState<boolean>(true);
+  const [observedSigns, setObservedSigns] = useState<ObservedBehavioralSignId[]>([
+    'pacing_settled',
+    'smiling_calm',
+  ]);
+  const [caregiverStressBefore, setCaregiverStressBefore] = useState<number>(4);
+  const [caregiverStressAfter, setCaregiverStressAfter] = useState<number>(1);
   const [notes, setNotes] = useState<string>('');
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
@@ -106,6 +114,12 @@ export default function ClinicalTelemetryView({
       : '4.0';
   const prnAvoidedCount = logs.filter((l) => l.prnAvoided).length;
 
+  const toggleObservedSign = (id: ObservedBehavioralSignId) => {
+    setObservedSigns((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   const handleRecordCheckIn = (e: React.FormEvent) => {
     e.preventDefault();
     const newEntry: BarsSessionLog = {
@@ -125,6 +139,10 @@ export default function ClinicalTelemetryView({
       moodValencePre: preBars >= 5 ? 2 : 3,
       moodValencePost: postBars === 4 ? 5 : 4,
       prnAvoided,
+      observedSigns,
+      caregiverStressBefore,
+      caregiverStressAfter,
+      sessionDurationMinutes: 30,
       notes:
         notes.trim() ||
         `30-minute Iso-Principle trajectory completed. BARS shifted from ${preBars} to ${postBars}.`,
@@ -172,54 +190,67 @@ export default function ClinicalTelemetryView({
           </button>
         </div>
 
-        {/* 4 Caregiver Observation KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-          <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
-            <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
+        {/* 5 Caregiver & Patient Efficacy KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
+          <div className="bg-wildwoods-forest p-4 sm:p-5 rounded-2xl border border-wildwoods-moss">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-wildwoods-mint">
               Observed Activity Shift (BARS)
             </div>
-            <div className="text-3xl font-serif font-bold text-wildwoods-gold mt-1">
+            <div className="text-2xl sm:text-3xl font-serif font-bold text-wildwoods-gold mt-1">
               {avgPreBars} → {avgPostBars}
             </div>
             <div className="text-xs text-emerald-300 mt-1 flex items-center gap-1">
               <TrendingDown className="w-4 h-4" />
-              Supports BARS 4.0 Quiet/Calm Baseline
+              Supports BARS 4.0 Calm
             </div>
           </div>
 
-          <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
-            <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
+          <div className="bg-wildwoods-forest p-4 sm:p-5 rounded-2xl border border-wildwoods-moss">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-wildwoods-mint">
               Settled Without Extra (PRN) Aid
             </div>
-            <div className="text-3xl font-serif font-bold text-emerald-300 mt-1">
-              {prnAvoidedCount} of {logs.length} Sessions
+            <div className="text-2xl sm:text-3xl font-serif font-bold text-emerald-300 mt-1">
+              {prnAvoidedCount} of {logs.length}
             </div>
             <div className="text-xs text-wildwoods-mint mt-1">
-              Caregiver-reported comfort observation
+              {epicRecord.flowsheetSummary.longitudinalOutcomes.prnAvoidanceRatePercent}% comfort rate
             </div>
           </div>
 
-          <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
-            <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
-              Playlist Tempo Slope
+          <div className="bg-wildwoods-forest p-4 sm:p-5 rounded-2xl border border-wildwoods-moss">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-wildwoods-mint">
+              Caregiver Stress Relief
             </div>
-            <div className="text-3xl font-serif font-bold text-wildwoods-cream mt-1">
-              {trajectory.currentState.targetBpm} → {trajectory.targetState.targetBpm} BPM
+            <div className="text-2xl sm:text-3xl font-serif font-bold text-wildwoods-gold mt-1">
+              {epicRecord.flowsheetSummary.longitudinalOutcomes.meanCaregiverStressBefore} →{' '}
+              {epicRecord.flowsheetSummary.longitudinalOutcomes.meanCaregiverStressAfter} / 5
             </div>
-            <div className="text-xs text-wildwoods-mint mt-1">
-              Gradual Phase 1 → Phase 3 tempo guide
+            <div className="text-xs text-emerald-300 mt-1">
+              Särkämö Dyad Burden Reduction
             </div>
           </div>
 
-          <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
-            <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
+          <div className="bg-wildwoods-forest p-4 sm:p-5 rounded-2xl border border-wildwoods-moss">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-wildwoods-mint">
+              Connection &amp; Lucidity Cues
+            </div>
+            <div className="text-2xl sm:text-3xl font-serif font-bold text-wildwoods-cream mt-1">
+              {epicRecord.flowsheetSummary.longitudinalOutcomes.totalObservedSignsCount} Observed
+            </div>
+            <div className="text-xs text-wildwoods-mint mt-1 truncate">
+              Smiles, sing-alongs &amp; stories
+            </div>
+          </div>
+
+          <div className="bg-wildwoods-forest p-4 sm:p-5 rounded-2xl border border-wildwoods-moss">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-wildwoods-mint">
               Afternoon Calm Schedule
             </div>
-            <div className="text-3xl font-serif font-bold text-wildwoods-gold mt-1">
+            <div className="text-2xl sm:text-3xl font-serif font-bold text-wildwoods-gold mt-1">
               {proactiveTime} Daily
             </div>
             <div className="text-xs text-wildwoods-mint mt-1">
-              30m before typical {patient.sundowningPeakTime} restlessness
+              30m before {patient.sundowningPeakTime}
             </div>
           </div>
         </div>
@@ -511,8 +542,56 @@ export default function ClinicalTelemetryView({
             </div>
 
             <div>
+              <label className="block text-xs font-bold text-wildwoods-slate mb-1.5">
+                3. Observed Signs of Connection &amp; Efficacy (Tap Any):
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {OBSERVED_BEHAVIORAL_SIGNS.map((sign) => {
+                  const active = observedSigns.includes(sign.id);
+                  return (
+                    <button
+                      key={sign.id}
+                      type="button"
+                      onClick={() => toggleObservedSign(sign.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
+                        active
+                          ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                          : 'bg-wildwoods-cream hover:bg-wildwoods-parchment text-wildwoods-slate border-wildwoods-sand'
+                      }`}
+                    >
+                      <span>{sign.emoji}</span>
+                      <span>{sign.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-wildwoods-parchment/80 border border-wildwoods-sand flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-bold text-wildwoods-slate">
+                4. Caregiver Stress / Relief After Session (1 = Very Calm, 5 = High Stress):
+              </span>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((score) => (
+                  <button
+                    key={score}
+                    type="button"
+                    onClick={() => setCaregiverStressAfter(score)}
+                    className={`w-9 h-9 rounded-xl font-extrabold text-xs border transition ${
+                      caregiverStressAfter === score
+                        ? 'bg-wildwoods-slate text-wildwoods-gold border-wildwoods-slate shadow'
+                        : 'bg-white text-wildwoods-slate border-wildwoods-sand'
+                    }`}
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <label className="block text-xs font-bold text-wildwoods-slate mb-1">
-                Caregiver Observation Note (Optional)
+                5. Caregiver Observation Note (Optional)
               </label>
               <input
                 type="text"
@@ -655,6 +734,31 @@ export default function ClinicalTelemetryView({
                     </div>
                   </div>
                   <p className="text-xs text-slate-600">{log.notes}</p>
+                  {((log.observedSigns && log.observedSigns.length > 0) ||
+                    (log.topResonantTracks && log.topResonantTracks.length > 0)) && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {log.observedSigns?.map((signId) => {
+                        const found = OBSERVED_BEHAVIORAL_SIGNS.find((s) => s.id === signId);
+                        if (!found) return null;
+                        return (
+                          <span
+                            key={signId}
+                            className="px-2 py-0.5 rounded-lg bg-emerald-100/80 text-emerald-950 text-[11px] font-bold"
+                          >
+                            {found.emoji} {found.label}
+                          </span>
+                        );
+                      })}
+                      {log.topResonantTracks?.map((trackTitle) => (
+                        <span
+                          key={trackTitle}
+                          className="px-2 py-0.5 rounded-lg bg-amber-100/80 text-amber-950 text-[11px] font-bold"
+                        >
+                          🎵 {trackTitle}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -13,3 +13,23 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
 }
+
+/* Tactile Skeuomorphic Hardware Buttons for Elderly / Motor-Impaired Accessibility */
+@layer components {
+  .btn-tactile-gold {
+    @apply bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-wildwoods-slate font-extrabold border-2 border-amber-200/80 shadow-[0_5px_0_0_#92400E,0_10px_20px_rgba(20,30,25,0.28)] active:translate-y-[3px] active:shadow-[0_2px_0_0_#92400E,0_4px_8px_rgba(20,30,25,0.2)] transition-all select-none;
+  }
+
+  .btn-tactile-emerald {
+    @apply bg-gradient-to-b from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-extrabold border-2 border-emerald-400/70 shadow-[0_5px_0_0_#064E3B,0_10px_20px_rgba(20,30,25,0.28)] active:translate-y-[3px] active:shadow-[0_2px_0_0_#064E3B,0_4px_8px_rgba(20,30,25,0.2)] transition-all select-none;
+  }
+
+  .btn-tactile-wood {
+    @apply bg-gradient-to-b from-wildwoods-forest to-wildwoods-slate hover:from-wildwoods-moss hover:to-wildwoods-forest text-wildwoods-cream font-extrabold border-2 border-wildwoods-amber/60 shadow-[0_5px_0_0_#0A100D,0_10px_20px_rgba(20,30,25,0.28)] active:translate-y-[3px] active:shadow-[0_2px_0_0_#0A100D,0_4px_8px_rgba(20,30,25,0.2)] transition-all select-none;
+  }
+
+  .card-jukebox-cabinet {
+    @apply bg-gradient-to-br from-wildwoods-slate via-[#18251F] to-wildwoods-forest text-wildwoods-cream border-2 border-wildwoods-amber/40 shadow-[0_20px_40px_rgba(20,30,25,0.22),inset_0_1px_0_rgba(255,255,255,0.12)];
+  }
+}
+

@@ -47,6 +47,8 @@ import {
 import {
   CURRENT_EMOTIONAL_STATES,
   TARGET_THERAPEUTIC_STATES,
+  OBSERVED_BEHAVIORAL_SIGNS,
+  ObservedBehavioralSignId,
   CurrentEmotionalStateId,
   TargetTherapeuticStateId,
   IsoTrajectoryResult,
@@ -279,6 +281,10 @@ export default function IsoJukeboxView({
   const [draftName, setDraftName] = useState(patient.preferredName);
   const [draftBirthYear, setDraftBirthYear] = useState(patient.birthYear);
   const [selectedAfterMoodId, setSelectedAfterMoodId] = useState<string | null>(null);
+  const [selectedObservedSigns, setSelectedObservedSigns] = useState<ObservedBehavioralSignId[]>([]);
+  const [caregiverStressBefore, setCaregiverStressBefore] = useState<number>(4);
+  const [caregiverStressAfter, setCaregiverStressAfter] = useState<number>(2);
+  const [trackResonanceIds, setTrackResonanceIds] = useState<Record<string, boolean>>({});
   const [moodLoggedToast, setMoodLoggedToast] = useState<string | null>(null);
   const [quarantineToast, setQuarantineToast] = useState<string | null>(null);
 
@@ -435,10 +441,33 @@ export default function IsoJukeboxView({
     setSelectedAfterMoodId(null);
   };
 
+  const toggleObservedSign = (signId: ObservedBehavioralSignId) => {
+    setSelectedObservedSigns((prev) =>
+      prev.includes(signId) ? prev.filter((s) => s !== signId) : [...prev, signId]
+    );
+  };
+
+  const toggleTrackResonance = (track: SequencedTrack) => {
+    setTrackResonanceIds((prev) => {
+      const nextVal = !prev[track.id];
+      if (nextVal) {
+        setMoodLoggedToast(
+          `❤️ Marked "${track.title}" as a High-Impact Song that sparked a smile or memory!`
+        );
+        setTimeout(() => setMoodLoggedToast(null), 4000);
+      }
+      return { ...prev, [track.id]: nextVal };
+    });
+  };
+
   const handleSelectSimpleAfterMood = (afterItem: (typeof SIMPLE_MOOD_AFTER)[number]) => {
     setSelectedAfterMoodId(afterItem.id);
     const beforeItem =
       SIMPLE_MOOD_BEFORE.find((b) => b.id === currentStateId) || SIMPLE_MOOD_BEFORE[0];
+
+    const resonantTitles = displayedTracks
+      .filter((t) => trackResonanceIds[t.id])
+      .map((t) => t.title);
 
     if (onQuickMoodLog) {
       onQuickMoodLog({
@@ -453,12 +482,29 @@ export default function IsoJukeboxView({
         moodValencePre: 2,
         moodValencePost: afterItem.valence,
         prnAvoided: afterItem.barsScore === 4,
-        notes: `${patient.preferredName} shifted from "${beforeItem.label}" before music to "${afterItem.label}" after listening.`,
+        observedSigns: selectedObservedSigns.length > 0 ? selectedObservedSigns : ['smiling_calm'],
+        caregiverStressBefore,
+        caregiverStressAfter,
+        sessionDurationMinutes: 30,
+        topResonantTracks:
+          resonantTitles.length > 0 && currentTrack
+            ? resonantTitles
+            : currentTrack
+            ? [currentTrack.title]
+            : [],
+        notes: `${patient.preferredName} shifted from "${beforeItem.label}" before music to "${afterItem.label}" after listening${
+          selectedObservedSigns.length > 0
+            ? ` (Observed: ${selectedObservedSigns
+                .map((id) => OBSERVED_BEHAVIORAL_SIGNS.find((s) => s.id === id)?.label)
+                .filter(Boolean)
+                .join(', ')})`
+            : ''
+        }.`,
       });
     }
 
     setMoodLoggedToast(
-      `✓ Mood Check-In Saved: ${patient.preferredName} went from "${beforeItem.label}" → "${afterItem.label}".`
+      `✓ Efficacy Check-In Saved: ${patient.preferredName} went from "${beforeItem.label}" → "${afterItem.label}"!`
     );
     setTimeout(() => setMoodLoggedToast(null), 5000);
   };
@@ -872,11 +918,24 @@ export default function IsoJukeboxView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setPatientSafeView(true);
+                setGiantDomeMode(true);
+              }}
+              className="btn-tactile-gold min-h-[46px] px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5"
+              title="Switch to the zero-menu Giant 1-Button Elder Mode"
+            >
+              <Lock className="w-4 h-4" />
+              🔘 Giant 1-Button Elder Mode
+            </button>
+
             {onOpenGuidedInterview && (
               <button
                 type="button"
                 onClick={onOpenGuidedInterview}
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow transition"
+                className="min-h-[46px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/60 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow transition"
               >
                 <Sparkles className="w-4 h-4" />
                 {isCustomProfile ? 'Edit Profile' : 'Create Your Own Jukebox'}
@@ -889,7 +948,7 @@ export default function IsoJukeboxView({
                 setExportModalInitialTab('streaming');
                 setIsFullLengthExportOpen(true);
               }}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-400/50 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow transition"
+              className="btn-tactile-emerald min-h-[46px] px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5"
             >
               <ExternalLink className="w-4 h-4 text-emerald-200" />
               Export to Spotify / Full Songs
@@ -901,7 +960,7 @@ export default function IsoJukeboxView({
                 setExportModalInitialTab('hardware');
                 setIsFullLengthExportOpen(true);
               }}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border border-wildwoods-amber/60 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition"
+              className="min-h-[46px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-amber/50 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition"
             >
               <Printer className="w-4 h-4 text-wildwoods-amber" />
               Bedside Cards &amp; Easy-Button
@@ -911,7 +970,7 @@ export default function IsoJukeboxView({
               <button
                 type="button"
                 onClick={onCopyShareLink}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
+                className="min-h-[46px] px-3.5 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
               >
                 <Share2 className="w-4 h-4 text-wildwoods-gold" />
                 Share Link
@@ -1135,6 +1194,62 @@ export default function IsoJukeboxView({
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Multi-Dimensional Efficacy Micro-Tags: What signs did you observe + Caregiver Stress Relief */}
+              <div className="pt-2.5 border-t border-emerald-200/70 space-y-2.5">
+                <div className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-950">
+                  3. What Signs of Connection Did You Notice? (Tap Any Before Saving):
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {OBSERVED_BEHAVIORAL_SIGNS.map((sign) => {
+                    const isChecked = selectedObservedSigns.includes(sign.id);
+                    return (
+                      <button
+                        key={sign.id}
+                        type="button"
+                        onClick={() => toggleObservedSign(sign.id)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1 ${
+                          isChecked
+                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                            : 'bg-white hover:bg-emerald-50 text-wildwoods-slate border-emerald-200'
+                        }`}
+                      >
+                        <span>{sign.emoji}</span>
+                        <span>{sign.label}</span>
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 text-xs">
+                  <span className="font-bold text-emerald-950">
+                    Caregiver Relief (How did this session help you?):
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {(
+                      [
+                        { score: 1, label: '😌 Much Calmer' },
+                        { score: 2, label: '🙂 Helpful Break' },
+                        { score: 4, label: '😓 Still Tiring' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.score}
+                        type="button"
+                        onClick={() => setCaregiverStressAfter(opt.score)}
+                        className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border ${
+                          caregiverStressAfter === opt.score
+                            ? 'bg-wildwoods-slate text-wildwoods-gold border-wildwoods-slate'
+                            : 'bg-white text-slate-600 border-emerald-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1461,12 +1576,12 @@ export default function IsoJukeboxView({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <button
                       type="button"
                       onClick={onPrevTrack}
                       aria-label="Previous song"
-                      className="min-w-[50px] min-h-[50px] p-3 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream flex items-center justify-center transition"
+                      className="btn-tactile-wood min-w-[54px] min-h-[54px] p-3 rounded-2xl flex items-center justify-center"
                     >
                       <SkipBack className="w-5 h-5" />
                     </button>
@@ -1474,17 +1589,17 @@ export default function IsoJukeboxView({
                     <button
                       type="button"
                       onClick={() => onTogglePlay(currentTrack)}
-                      className="min-h-[56px] px-8 py-3 rounded-2xl bg-wildwoods-amber hover:bg-wildwoods-gold text-wildwoods-slate font-extrabold text-base flex items-center gap-2.5 shadow-lg transition"
+                      className="btn-tactile-gold min-h-[60px] px-8 py-3.5 rounded-2xl text-base sm:text-lg flex items-center gap-2.5"
                     >
-                      {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                      {isPlaying ? 'Pause' : 'Play Song'}
+                      {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 fill-current" />}
+                      {isPlaying ? 'Pause Music' : 'Play Song'}
                     </button>
 
                     <button
                       type="button"
                       onClick={onNextTrack}
                       aria-label="Next song"
-                      className="min-w-[50px] min-h-[50px] p-3 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream flex items-center justify-center transition"
+                      className="btn-tactile-wood min-w-[54px] min-h-[54px] p-3 rounded-2xl flex items-center justify-center"
                     >
                       <SkipForward className="w-5 h-5" />
                     </button>
@@ -1493,20 +1608,40 @@ export default function IsoJukeboxView({
                       type="button"
                       onClick={onToggleMute}
                       aria-label={isMuted ? 'Unmute' : 'Mute'}
-                      className="min-w-[50px] min-h-[50px] p-3 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-mint flex items-center justify-center transition"
+                      className="min-w-[50px] min-h-[50px] p-3 rounded-2xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-mint flex items-center justify-center border border-wildwoods-moss transition"
                     >
                       {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleRedFlag(currentTrack)}
-                    className="min-h-[48px] px-4 py-2.5 rounded-2xl bg-red-900/80 hover:bg-red-700 text-red-100 border border-red-400/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
-                  >
-                    <ShieldAlert className="w-4 h-4 text-red-300" />
-                    Skip &amp; Never Play Again
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleTrackResonance(currentTrack)}
+                      className={`min-h-[48px] px-3.5 py-2.5 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center gap-1.5 border-2 transition ${
+                        trackResonanceIds[currentTrack.id]
+                          ? 'bg-emerald-600 text-white border-emerald-400 shadow'
+                          : 'bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-gold border-wildwoods-amber/50'
+                      }`}
+                      title="Record that this song sparked a smile, sing-along, or memory"
+                    >
+                      <span>{trackResonanceIds[currentTrack.id] ? '❤️' : '🤍'}</span>
+                      <span>
+                        {trackResonanceIds[currentTrack.id]
+                          ? 'Sparked a Smile!'
+                          : 'Sparked a Smile'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRedFlag(currentTrack)}
+                      className="min-h-[48px] px-4 py-2.5 rounded-2xl bg-red-900/80 hover:bg-red-700 text-red-100 border border-red-400/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
+                    >
+                      <ShieldAlert className="w-4 h-4 text-red-300" />
+                      Skip &amp; Never Play Again
+                    </button>
+                  </div>
                 </div>
 
                 {/* Collapsible Pitch-Locked Tempo & Pace Controller (Playskool Simple by default, 1-Click to Expand) */}

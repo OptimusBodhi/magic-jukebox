@@ -106,6 +106,58 @@ export interface IsoTrajectoryResult {
   orderedTracks: SequencedTrack[];
 }
 
+export type ObservedBehavioralSignId =
+  | 'smiling_calm'
+  | 'singing_humming'
+  | 'tapping_dancing'
+  | 'shared_memory'
+  | 'pacing_settled'
+  | 'smooth_routine';
+
+export const OBSERVED_BEHAVIORAL_SIGNS: Array<{
+  id: ObservedBehavioralSignId;
+  emoji: string;
+  label: string;
+  clinicalDomain: string;
+}> = [
+  {
+    id: 'smiling_calm',
+    emoji: '😊',
+    label: 'Smiled or Relaxed Face',
+    clinicalDomain: 'Affective Valence & Facial Relaxation',
+  },
+  {
+    id: 'singing_humming',
+    emoji: '🎤',
+    label: 'Sang or Hummed Along',
+    clinicalDomain: 'Ventral Pre-SMA Vocal Recruitment',
+  },
+  {
+    id: 'tapping_dancing',
+    emoji: '🥁',
+    label: 'Tapped Feet or Hands to Beat',
+    clinicalDomain: 'Rhythmic Motor Entrainment (RAS)',
+  },
+  {
+    id: 'shared_memory',
+    emoji: '💬',
+    label: 'Shared a Story or Conversation',
+    clinicalDomain: 'DMN Autobiographical Lucidity',
+  },
+  {
+    id: 'pacing_settled',
+    emoji: '🪑',
+    label: 'Sat Down / Stopped Pacing',
+    clinicalDomain: 'Sympathetic Arousal Reduction (BARS)',
+  },
+  {
+    id: 'smooth_routine',
+    emoji: '🛁',
+    label: 'Easier Daily Care / Visit',
+    clinicalDomain: 'PLST Care-Task Cooperation',
+  },
+];
+
 export interface BarsSessionLog {
   id: string;
   date: string;
@@ -119,6 +171,11 @@ export interface BarsSessionLog {
   moodValencePost: number; // 1-5
   prnAvoided: boolean;
   notes: string;
+  observedSigns?: ObservedBehavioralSignId[];
+  caregiverStressBefore?: number; // 1-5 (5 = high stress, 1 = calm/relieved)
+  caregiverStressAfter?: number; // 1-5
+  sessionDurationMinutes?: number;
+  topResonantTracks?: string[];
 }
 
 export interface PatientProfile {
@@ -586,6 +643,11 @@ export const INITIAL_BARS_LOGS: BarsSessionLog[] = [
     moodValencePost: 4,
     prnAvoided: true,
     notes: 'Matched pacing with Bill Haley (124 BPM), stepped down via Sinatra to Louis Armstrong (62 BPM). Pacing resolved at minute 16.',
+    observedSigns: ['pacing_settled', 'smiling_calm'],
+    caregiverStressBefore: 4,
+    caregiverStressAfter: 2,
+    sessionDurationMinutes: 30,
+    topResonantTracks: ['What a Wonderful World', 'Fly Me to the Moon'],
   },
   {
     id: 'log-w2',
@@ -600,6 +662,11 @@ export const INITIAL_BARS_LOGS: BarsSessionLog[] = [
     moodValencePost: 5,
     prnAvoided: true,
     notes: 'Initiated Gerdner IMIA protocol 20 mins prior to shower. Zero verbal resistance; sang along to Ben E. King.',
+    observedSigns: ['smooth_routine', 'singing_humming', 'smiling_calm'],
+    caregiverStressBefore: 4,
+    caregiverStressAfter: 1,
+    sessionDurationMinutes: 25,
+    topResonantTracks: ['Stand By Me', 'Unforgettable'],
   },
   {
     id: 'log-w3',
@@ -614,6 +681,11 @@ export const INITIAL_BARS_LOGS: BarsSessionLog[] = [
     moodValencePost: 5,
     prnAvoided: false,
     notes: 'Started gently with Simon & Garfunkel (72 BPM), bridged to Temptations (104 BPM). Recalled 1964 Green Bay ferry story clearly.',
+    observedSigns: ['shared_memory', 'smiling_calm', 'tapping_dancing'],
+    caregiverStressBefore: 3,
+    caregiverStressAfter: 1,
+    sessionDurationMinutes: 30,
+    topResonantTracks: ['My Girl', 'Bridge Over Troubled Water'],
   },
   {
     id: 'log-w4',
@@ -628,6 +700,11 @@ export const INITIAL_BARS_LOGS: BarsSessionLog[] = [
     moodValencePost: 4,
     prnAvoided: true,
     notes: '30-min proactive dosing prevented typical 4:30 PM agitation spike entirely. PRN lorazepam not needed.',
+    observedSigns: ['pacing_settled', 'smiling_calm'],
+    caregiverStressBefore: 4,
+    caregiverStressAfter: 1,
+    sessionDurationMinutes: 30,
+    topResonantTracks: ['Moon River', 'What a Wonderful World'],
   },
   {
     id: 'log-w5',
@@ -642,6 +719,11 @@ export const INITIAL_BARS_LOGS: BarsSessionLog[] = [
     moodValencePost: 4,
     prnAvoided: true,
     notes: 'Rainy afternoon increased shadow anxiety. Iso-Principle arc settled breathing and restored eye contact by Phase 3.',
+    observedSigns: ['pacing_settled', 'smiling_calm', 'shared_memory'],
+    caregiverStressBefore: 5,
+    caregiverStressAfter: 2,
+    sessionDurationMinutes: 30,
+    topResonantTracks: ['Unforgettable', 'What a Wonderful World'],
   },
   {
     id: 'log-w6',
@@ -656,6 +738,11 @@ export const INITIAL_BARS_LOGS: BarsSessionLog[] = [
     moodValencePost: 5,
     prnAvoided: true,
     notes: 'Caregiver Duet Mode used with large-print lyrics. Verbal fluency noticeably improved for 2 hours post-session.',
+    observedSigns: ['singing_humming', 'shared_memory', 'smiling_calm', 'tapping_dancing'],
+    caregiverStressBefore: 3,
+    caregiverStressAfter: 1,
+    sessionDurationMinutes: 35,
+    topResonantTracks: ['How Great Thou Art', 'Stand By Me'],
   },
 ];
 

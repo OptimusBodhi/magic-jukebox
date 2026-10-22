@@ -144,6 +144,27 @@ test('Central Spotify Playlist serverless function, Instant Full-Length Multi-So
   assert.match(jukeboxSrc, /Play Full-Length Songs \(In-App\)/);
 });
 
+test('Gerontechnology tactile UI classes and multi-dimensional efficacy telemetry (OBSERVED_BEHAVIORAL_SIGNS, Caregiver Stress Relief, Sparked a Smile) exist', () => {
+  const globalsCss = fs.readFileSync(path.resolve('src/app/globals.css'), 'utf8');
+  assert.match(globalsCss, /btn-tactile-gold/);
+  assert.match(globalsCss, /btn-tactile-wood/);
+  assert.match(globalsCss, /card-jukebox-cabinet/);
+
+  const isoLib = fs.readFileSync(path.resolve('src/lib/iso-sequencer.ts'), 'utf8');
+  assert.match(isoLib, /OBSERVED_BEHAVIORAL_SIGNS/);
+  assert.match(isoLib, /caregiverStressBefore/);
+  assert.match(isoLib, /caregiverStressAfter/);
+
+  const jukeboxSrc = fs.readFileSync(path.resolve('src/components/IsoJukeboxView.tsx'), 'utf8');
+  assert.match(jukeboxSrc, /Giant 1-Button Elder Mode/);
+  assert.match(jukeboxSrc, /Sparked a Smile/);
+  assert.match(jukeboxSrc, /What Signs of Connection Did You Notice/);
+
+  const telemetrySrc = fs.readFileSync(path.resolve('src/components/ClinicalTelemetryView.tsx'), 'utf8');
+  assert.match(telemetrySrc, /Caregiver Stress Relief/);
+  assert.match(telemetrySrc, /Connection &amp; Lucidity Cues/);
+});
+
 test('Playlist builder uses targeted individual artist+song seedQueries per selected genre/decade with zero hard-coded oldies bleed and filters out karaoke/lullaby covers', () => {
   const onboardingLib = fs.readFileSync(
     path.resolve('src/lib/onboarding-interview.ts'),
