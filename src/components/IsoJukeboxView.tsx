@@ -907,15 +907,6 @@ export default function IsoJukeboxView({
               Bedside Cards &amp; Easy-Button
             </button>
 
-            <button
-              type="button"
-              onClick={() => setPatientSafeView(true)}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-wildwoods-forest hover:bg-wildwoods-moss text-wildwoods-cream border border-wildwoods-sage/40 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition"
-            >
-              <Lock className="w-4 h-4 text-wildwoods-gold" />
-              Simple Full-Screen View
-            </button>
-
             {onCopyShareLink && (
               <button
                 type="button"
