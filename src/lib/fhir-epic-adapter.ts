@@ -84,10 +84,10 @@ export function buildFhirR4EpicBundle(
   const flowsheetSummary: EpicClinicalFlowsheetSummary = {
     standardVersion: 'HL7 FHIR R4 (v4.0.1) • US Core / SMART on FHIR',
     interoperabilityProfile: 'Epic App Orchard / Oracle Health / NHS Digital CarePlan',
-    snomedInterventionCode: 'SNOMED CT 410260000 — Music therapy structure & management (IMIA)',
-    icd10TargetCode: 'ICD-10-CM F03.911 — Dementia with behavioral agitation / sundowning',
-    loincAssessmentCode: 'LOINC 72170-4 / BARS — Behavioural Activity Rating Scale (1–7)',
-    cmsQualityMeasure: 'CMS NQF #0680 — Non-Pharmacological Antipsychotic Sparing Protocol',
+    snomedInterventionCode: 'SNOMED CT 410260000 — Individualized music support & care structure',
+    icd10TargetCode: 'ICD-10-CM F03.911 — Cognitive / behavioral restlessness support context',
+    loincAssessmentCode: 'LOINC 72170-4 / BARS — Caregiver Behavioural Activity Observation (1–7)',
+    cmsQualityMeasure: 'CMS NQF #0680 — Supportive Non-Pharmacological Care Documentation',
     patientSummary: {
       displayName: `${patient.name} ("${patient.preferredName}")`,
       birthYear: patient.birthYear,
@@ -95,8 +95,9 @@ export function buildFhirR4EpicBundle(
       musicalHeritage: patient.musicalHeritage,
     },
     imiaCarePlanOrder: {
-      orderName: 'Non-Pharmacological Precision Music Medicine (Iso-Principle + Gerdner IMIA)',
-      dosingSchedule: `Daily proactive administration at ${proactiveTime} (30 mins prior to ${patient.sundowningPeakTime} PLST peak) + PRN for BARS ≥ 5`,
+      orderName:
+        'Evidence-Informed Personalized Music Support Plan (Iso-Principle & Gerdner Guidelines)',
+      dosingSchedule: `Suggested daily supportive listening at ${proactiveTime} (30 mins prior to typical ${patient.sundowningPeakTime} afternoon restlessness) + as needed for comfort`,
       sundowningPeakTime: patient.sundowningPeakTime,
       proactiveStartTime: proactiveTime,
       isoTrajectoryPrescription: `${trajectory.currentState.label} (${trajectory.currentState.targetBpm} BPM) → ${trajectory.targetState.label} (${trajectory.targetState.targetBpm} BPM) over 30 minutes`,
@@ -155,8 +156,9 @@ export function buildFhirR4EpicBundle(
           resourceType: 'CarePlan',
           id: 'careplan-imia-iso-principle',
           status: 'active',
-          intent: 'order',
-          title: 'Individualized Music Intervention for Agitation (IMIA) & Iso-Principle Order',
+          intent: 'plan',
+          title:
+            'Personalized Music Support Plan & Caregiver Observation Summary (Shareable with Providers & MT-BCs)',
           description: flowsheetSummary.imiaCarePlanOrder.isoTrajectoryPrescription,
           category: [
             {

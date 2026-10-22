@@ -80,6 +80,17 @@ test('Pitch-preserving tempo & Parkinson RAS pace matcher is implemented in page
   assert.match(jukeboxSrc, /Gradual Speed-Up \(Parkinson’s \/ Gait Pace\)/);
 });
 
+test('North Star Charter exists and enforces evidence-informed supportive care & gatekeeper-friendly positioning', () => {
+  const charterPath = path.resolve('docs/NORTH_STAR_CHARTER.md');
+  assert.equal(fs.existsSync(charterPath), true, 'docs/NORTH_STAR_CHARTER.md must exist');
+  const charter = fs.readFileSync(charterPath, 'utf8');
+  assert.match(charter, /Board-Certified Music Therapists \(MT-BCs\)/);
+  assert.match(charter, /Modular Specialty Architecture/);
+
+  const fhirLib = fs.readFileSync(path.resolve('src/lib/fhir-epic-adapter.ts'), 'utf8');
+  assert.match(fhirLib, /intent:\s*'plan'/);
+});
+
 
 
 

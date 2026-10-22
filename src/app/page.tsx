@@ -1022,13 +1022,21 @@ export default function MagicJukeboxApp() {
 
       {/* Page Footer */}
       <footer className="border-t border-wildwoods-sand bg-wildwoods-parchment/70 py-6 px-4 text-center text-xs sm:text-sm text-slate-600">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="font-medium text-wildwoods-slate">
-            This Magic Jukebox is being developed in partnership with{' '}
-            <strong>Studio Wildwoods</strong>.
-          </p>
-          <p className="text-xs text-slate-500">
-            Precision Music Medicine for Dementia &amp; Emotional Transformation
+        <div className="max-w-7xl mx-auto space-y-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="font-medium text-wildwoods-slate">
+              This Magic Jukebox is being developed in partnership with{' '}
+              <strong>Studio Wildwoods</strong>.
+            </p>
+            <p className="text-xs text-slate-500 font-semibold">
+              Evidence-Informed Personalized Music Sequencing, Pace Support &amp; Caregiver Documentation
+            </p>
+          </div>
+          <p className="text-[11px] text-slate-500 text-left sm:text-center leading-relaxed max-w-4xl mx-auto">
+            Grounded in peer-reviewed neuroscience and musicology to support families, caregivers,
+            Board-Certified Music Therapists (MT-BCs), and healthcare teams. The Magic Jukebox is a
+            supportive music sequencing and observational documentation tool—not a medical device,
+            clinical treatment, or substitute for professional medical advice.
           </p>
         </div>
       </footer>

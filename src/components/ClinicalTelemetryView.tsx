@@ -147,15 +147,16 @@ export default function ClinicalTelemetryView({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-wildwoods-amber/20 border border-wildwoods-amber text-wildwoods-gold text-xs font-bold uppercase tracking-wider">
-              Pillar 4 • Circadian Sundowning Shield &amp; BARS/CMAI Telemetry
+              Caregiver Support • Afternoon Routine &amp; Provider EHR Summary
             </div>
             <h1 className="text-2xl md:text-3xl font-serif font-bold">
-              Clinical Telemetry &amp; Proactive Sundowning Shield
+              Caregiver Observation Log &amp; Provider EHR Summary
             </h1>
             <p className="text-wildwoods-mint text-sm md:text-base max-w-3xl">
-              Operationalizes Dr. Linda Gerdner’s 30-minute proactive administration rule (PLST
-              model) alongside the Behavioural Activity Rating Scale (BARS 1–7) from trial{' '}
-              <span className="text-wildwoods-gold font-semibold">NCT04236557</span>.
+              Helps families and care teams apply Dr. Linda Gerdner’s 30-minute proactive listening
+              guideline, record pre/post session observations, and share standardized{' '}
+              <span className="text-wildwoods-gold font-semibold">HL7 FHIR R4</span> summaries with
+              physicians, nurses, and Board-Certified Music Therapists (MT-BCs).
             </p>
           </div>
 
@@ -166,59 +167,59 @@ export default function ClinicalTelemetryView({
           >
             <Stethoscope className="w-4 h-4" />
             {exportModalOpen
-              ? 'Hide Epic / HL7 FHIR Medical Record'
-              : 'Preview Epic / HL7 FHIR Medical Record'}
+              ? 'Hide Provider / HL7 FHIR Summary'
+              : 'Preview Provider / HL7 FHIR Summary'}
           </button>
         </div>
 
-        {/* 4 Clinical KPI Cards */}
+        {/* 4 Caregiver Observation KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
             <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
-              Mean Agitation Shift (BARS)
+              Observed Activity Shift (BARS)
             </div>
             <div className="text-3xl font-serif font-bold text-wildwoods-gold mt-1">
               {avgPreBars} → {avgPostBars}
             </div>
             <div className="text-xs text-emerald-300 mt-1 flex items-center gap-1">
               <TrendingDown className="w-4 h-4" />
-              Restores BARS 4.0 Quiet/Lucid Baseline
+              Supports BARS 4.0 Quiet/Calm Baseline
             </div>
           </div>
 
           <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
             <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
-              PRN Psychotropic Doses Avoided
+              Settled Without Extra (PRN) Aid
             </div>
             <div className="text-3xl font-serif font-bold text-emerald-300 mt-1">
               {prnAvoidedCount} of {logs.length} Sessions
             </div>
             <div className="text-xs text-wildwoods-mint mt-1">
-              Non-pharmacological BPSD resolution
+              Caregiver-reported comfort observation
             </div>
           </div>
 
           <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
             <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
-              Autonomic Heart Rate Entrainment
+              Playlist Tempo Slope
             </div>
             <div className="text-3xl font-serif font-bold text-wildwoods-cream mt-1">
-              -22% to -25%
+              {trajectory.currentState.targetBpm} → {trajectory.targetState.targetBpm} BPM
             </div>
             <div className="text-xs text-wildwoods-mint mt-1">
-              Phase 1 (118 BPM) → Phase 3 (62 BPM)
+              Gradual Phase 1 → Phase 3 tempo guide
             </div>
           </div>
 
           <div className="bg-wildwoods-forest p-5 rounded-2xl border border-wildwoods-moss">
             <div className="text-xs font-bold uppercase tracking-wider text-wildwoods-mint">
-              Proactive Sundowning Shield
+              Afternoon Calm Schedule
             </div>
             <div className="text-3xl font-serif font-bold text-wildwoods-gold mt-1">
               {proactiveTime} Daily
             </div>
             <div className="text-xs text-wildwoods-mint mt-1">
-              30m before {patient.sundowningPeakTime} PLST peak
+              30m before typical {patient.sundowningPeakTime} restlessness
             </div>
           </div>
         </div>
@@ -230,11 +231,16 @@ export default function ClinicalTelemetryView({
               <div>
                 <span className="text-xs font-extrabold uppercase tracking-wider text-wildwoods-gold flex items-center gap-1.5">
                   <Stethoscope className="w-4 h-4" />
-                  EHR Interoperability Preview • {epicRecord.flowsheetSummary.standardVersion}
+                  Provider &amp; EHR Documentation Share • {epicRecord.flowsheetSummary.standardVersion}
                 </span>
                 <h3 className="text-xl font-serif font-bold text-wildwoods-cream mt-0.5">
-                  Standardized Medical Record Profile (Epic / Oracle Health / NHS Digital)
+                  Shareable Provider Summary (Epic / Oracle Health / Care Team Hand-Off)
                 </h3>
+                <p className="text-xs text-wildwoods-mint mt-1">
+                  Formats personalized music preferences, skipped songs, and caregiver session
+                  observations into a standard HL7 FHIR R4 CarePlan (`intent: plan`) to share with
+                  healthcare providers and Music Therapists (MT-BCs).
+                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -317,18 +323,18 @@ export default function ClinicalTelemetryView({
                   </div>
                 </div>
 
-                {/* Active Non-Pharmacological CarePlan Order & Contraindication Flags */}
+                {/* Supportive Music CarePlan & Songs to Avoid Flags */}
                 <div className="lg:col-span-7 bg-wildwoods-slate p-4 rounded-2xl border border-wildwoods-moss space-y-3">
                   <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
-                    2. Active CarePlan Order &amp; Nursing Flowsheet Protocol
+                    2. Personalized Music Support Plan &amp; Caregiver Flowsheet
                   </div>
                   <div className="space-y-1.5 text-wildwoods-cream">
                     <div>
-                      <span className="text-wildwoods-mint">Order:</span>{' '}
+                      <span className="text-wildwoods-mint">Support Plan:</span>{' '}
                       <strong>{epicRecord.flowsheetSummary.imiaCarePlanOrder.orderName}</strong>
                     </div>
                     <div>
-                      <span className="text-wildwoods-mint">Dosing Schedule:</span>{' '}
+                      <span className="text-wildwoods-mint">Suggested Schedule:</span>{' '}
                       <strong className="text-wildwoods-gold">
                         {epicRecord.flowsheetSummary.imiaCarePlanOrder.dosingSchedule}
                       </strong>
@@ -347,11 +353,11 @@ export default function ClinicalTelemetryView({
                     </div>
                   </div>
 
-                  {/* Nursing Contraindications (Red Flag Quarantine) */}
+                  {/* Caregiver Flagged Songs to Avoid */}
                   <div className="p-3 rounded-xl bg-red-950/90 border border-red-500/40 space-y-1">
                     <div className="font-extrabold text-red-300 uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldAlert className="w-4 h-4 text-red-400" />
-                      EHR Clinical Flag: Acoustic Contraindications (DO NOT PLAY)
+                      Caregiver Flag: Songs to Avoid (Do Not Play)
                     </div>
                     {epicRecord.flowsheetSummary.nursingContraindicationFlags.map((flag, i) => (
                       <div key={i} className="text-red-100">
@@ -382,7 +388,7 @@ export default function ClinicalTelemetryView({
         </div>
       )}
 
-      {/* Proactive Sundowning Scheduler & 1-Tap BARS Check-In */}
+      {/* Proactive Afternoon Scheduler & 1-Tap BARS Check-In */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         {/* Left 6 Columns: 1-Tap BARS (1-7) Pre/Post Session Check-In Widget */}
         <section
@@ -391,14 +397,14 @@ export default function ClinicalTelemetryView({
         >
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-wildwoods-sage">
-              5-Second Caregiver Check-In
+              5-Second Caregiver Observation Log
             </span>
             <h2 className="text-2xl font-serif font-bold text-wildwoods-slate">
-              Log Pre / Post Session BARS Score (1–7)
+              Record Pre / Post Session Observation (BARS 1–7)
             </h2>
             <p className="text-xs text-slate-600 mt-1">
-              Rate {patient.preferredName}’s Behavioural Activity Rating Scale before Track 1 and
-              immediately after the 30-minute Iso-Principle arc concludes.
+              Note {patient.preferredName}’s activity level before music starts and after listening
+              so you can track what works best or share a summary with their care team.
             </p>
           </div>
 
@@ -406,7 +412,7 @@ export default function ClinicalTelemetryView({
             {/* Pre-Session BARS Selector */}
             <div className="space-y-2">
               <label className="block text-xs font-extrabold uppercase tracking-wider text-amber-900">
-                1. Pre-Session BARS Score (Before Music Starts):
+                1. Pre-Session Observation (Before Music Starts):
               </label>
               <div className="grid grid-cols-7 gap-1.5">
                 {BARS_SCALE_DEFINITIONS.map((item) => (
@@ -436,7 +442,7 @@ export default function ClinicalTelemetryView({
             {/* Post-Session BARS Selector */}
             <div className="space-y-2">
               <label className="block text-xs font-extrabold uppercase tracking-wider text-emerald-900">
-                2. Post-Session BARS Score (After 30-Minute Iso-Principle Arc):
+                2. Post-Session Observation (After Listening):
               </label>
               <div className="grid grid-cols-7 gap-1.5">
                 {BARS_SCALE_DEFINITIONS.map((item) => (
@@ -467,7 +473,7 @@ export default function ClinicalTelemetryView({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-wildwoods-slate mb-1">
-                  Clinical Context / Trigger Window
+                  Daily Routine / Listening Context
                 </label>
                 <select
                   value={triggerContext}
@@ -475,16 +481,16 @@ export default function ClinicalTelemetryView({
                   className="w-full min-h-[46px] px-3 py-2 rounded-xl bg-wildwoods-cream border border-wildwoods-sand text-wildwoods-slate text-xs font-semibold"
                 >
                   <option value="Late-Afternoon Sundowning Pacing (4:00 PM Proactive Shield)">
-                    Late-Afternoon Sundowning Pacing (4:00 PM Shield)
+                    Late-Afternoon Wind-Down (30m Before Restlessness)
                   </option>
                   <option value="Morning Bathing & Personal Care (Gerdner PLST)">
-                    Morning Bathing &amp; Personal Care (Gerdner PLST)
+                    Morning Bathing &amp; Personal Care Routine
                   </option>
                   <option value="Pre-Visit Lucidity Primer (DMN Scaffolding)">
-                    Pre-Visit Lucidity Primer (DMN Scaffolding)
+                    Pre-Visit Family Connection Routine
                   </option>
                   <option value="Daytime Apathy / Caregiver Duet Reminiscence">
-                    Daytime Apathy / Caregiver Duet Reminiscence
+                    Daytime Sing-Along &amp; Family Reminiscence
                   </option>
                 </select>
               </div>
@@ -498,7 +504,7 @@ export default function ClinicalTelemetryView({
                     className="w-4 h-4 accent-wildwoods-sage"
                   />
                   <span className="text-xs font-bold text-wildwoods-slate">
-                    PRN Sedative / Antipsychotic Avoided
+                    Settled Calmly Without Extra (PRN) Aid
                   </span>
                 </label>
               </div>
@@ -506,13 +512,13 @@ export default function ClinicalTelemetryView({
 
             <div>
               <label className="block text-xs font-bold text-wildwoods-slate mb-1">
-                Clinical Observation Note (Optional)
+                Caregiver Observation Note (Optional)
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g., Pacing stopped during Frank Sinatra bridge; smiled and sang along with Louis Armstrong."
+                placeholder="e.g., Pacing settled during Frank Sinatra; smiled and sang along with Louis Armstrong."
                 className="w-full px-4 py-2.5 rounded-xl bg-wildwoods-cream border border-wildwoods-sand text-wildwoods-slate text-xs"
               />
             </div>
@@ -522,34 +528,34 @@ export default function ClinicalTelemetryView({
               className="w-full min-h-[54px] px-6 py-3 rounded-2xl bg-wildwoods-slate hover:bg-wildwoods-forest text-wildwoods-cream font-extrabold text-sm flex items-center justify-center gap-2 shadow-md transition"
             >
               <PlusCircle className="w-5 h-5 text-wildwoods-gold" />
-              Record Pre/Post BARS Telemetry Check-In
+              Save Session Observation to Care Log
             </button>
           </form>
         </section>
 
-        {/* Right 6 Columns: Proactive Sundowning Scheduler + 6-Week Longitudinal Chart */}
+        {/* Right 6 Columns: Proactive Afternoon Scheduler + 6-Week Longitudinal Chart */}
         <div className="xl:col-span-6 space-y-6">
-          {/* Proactive Sundowning Shield Scheduler (Gerdner IMIA Protocol) */}
+          {/* Proactive Afternoon Calm Scheduler (Gerdner Guideline) */}
           <section className="bg-wildwoods-slate text-wildwoods-cream rounded-3xl p-6 md:p-7 shadow-xl border border-wildwoods-moss space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-wildwoods-gold">
                   <BellRing className="w-4 h-4" />
-                  Gerdner IMIA Proactive Dosing Rule
+                  Gerdner 30-Minute Proactive Listening Guideline
                 </span>
                 <h3 className="text-xl font-serif font-bold">
-                  Circadian Sundowning Shield Scheduler
+                  Afternoon Calm Routine Scheduler
                 </h3>
               </div>
               <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
-                Armed &amp; Active
+                Ready
               </span>
             </div>
 
             <p className="text-xs text-wildwoods-mint leading-relaxed">
-              Dr. Linda Gerdner’s Progressively Lowered Stress Threshold (PLST) protocol mandates
-              initiating individualized music <strong>30 minutes prior</strong> to the patient’s
-              anticipated peak agitation window—before BARS 6–7 rejection occurs.
+              Published geriatric nursing research (Dr. Linda Gerdner’s PLST framework) shows that
+              starting familiar music <strong>30 minutes before</strong> typical late-afternoon
+              restlessness helps maintain a calm environment before stress builds up.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-wildwoods-forest p-4 rounded-2xl border border-wildwoods-moss">

@@ -25,6 +25,63 @@ export default function ClinicalEvidenceVaultView() {
 
   return (
     <div className="space-y-8">
+      {/* North Star Scope & Collaborative Care Positioning Banner */}
+      <section className="bg-white rounded-3xl p-6 md:p-7 shadow-md border-2 border-wildwoods-amber/70 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-extrabold uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-emerald-700" />
+            North Star Scope • Evidence-Informed Support &amp; Provider Collaboration
+          </div>
+          <span className="text-xs font-bold text-slate-500">
+            Designed to empower families &amp; complement credentialed clinicians and MT-BCs
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-xl md:text-2xl font-serif font-bold text-wildwoods-slate">
+            Grounded in Peer-Reviewed Science — Built for Personalized Music Sequencing, Caregiver Support &amp; Provider Documentation
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            The Magic Jukebox translates published neuroscience and musicology into an easy-to-use
+            daily tool for families, care communities, and allied health professionals.{' '}
+            <strong>We do not provide a standalone medical treatment or replace licensed clinicians or Board-Certified Music Therapists (MT-BCs).</strong>{' '}
+            Instead, our modular platform equips caregivers and care teams with biographical music
+            discovery, mood-to-calm sequencing, pitch-preserving pace support, and standardized{' '}
+            <strong>HL7 FHIR R4 observational summaries</strong> to share with healthcare providers.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
+          <div className="p-3.5 rounded-2xl bg-wildwoods-cream border border-wildwoods-sand space-y-1">
+            <div className="font-extrabold text-wildwoods-slate">
+              1. Memory &amp; Cognitive Care Track
+            </div>
+            <p className="text-slate-600">
+              Alzheimer’s, dementia &amp; afternoon restlessness support using Reminiscence Bump
+              (ages 10–30) playlists, family memory prompts, and 3-phase mood-to-calm sequencing.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-wildwoods-cream border border-wildwoods-sand space-y-1">
+            <div className="font-extrabold text-wildwoods-slate">
+              2. Movement &amp; Pace Support Track
+            </div>
+            <p className="text-slate-600">
+              Parkinson’s &amp; motor rhythm support using pitch-locked tempo matching (`0.65x–1.35x`),
+              gradual speed-up ramping, and optional rhythmic beat cues inspired by RAS research.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-wildwoods-cream border border-wildwoods-sand space-y-1">
+            <div className="font-extrabold text-wildwoods-slate">
+              3. Calm, Routine &amp; Provider Share Track
+            </div>
+            <p className="text-slate-600">
+              1-tap relaxing playlists for daily care routines plus caregiver observation logs
+              formatted into HL7 FHIR R4 summaries for Epic and clinical care teams.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Top Neurobiological Hero: Jacobsen et al. (2015) Max Planck Discovery */}
       <section className="bg-wildwoods-slate text-wildwoods-cream rounded-3xl p-6 md:p-8 shadow-xl border border-wildwoods-moss space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

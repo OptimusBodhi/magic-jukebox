@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Magic Jukebox | Precision Music Medicine for Dementia',
+  title: 'The Magic Jukebox | Personalized Music Sequencing & Caregiver Support',
   description:
-    'Transforming difficult emotions in Alzheimer’s and dementia care through the clinical Iso-Principle, Reminiscence Bump co-curation, and preserved cACC / ventral pre-SMA neural scaffolding.',
+    'Evidence-informed personalized music sequencing, pitch-preserving pace support, family memory prompts, and shareable EHR documentation for dementia, Parkinson’s, and supportive care.',
 };
 
 export default function RootLayout({
